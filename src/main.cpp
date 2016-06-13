@@ -37,9 +37,6 @@ int main(int argc, char *argv[]) {
   Param_State state;
   read_mesh(input_mesh, state);
 
-  #ifndef USE_PARDISO
-  cout << "Warning! Unoptimized version without Pardiso Solver. The algorithm will be significantly slower!" << endl;
-  #endif
   StateManager state_manager;
   GlobalLocalParametrization param(state_manager, &state);
 

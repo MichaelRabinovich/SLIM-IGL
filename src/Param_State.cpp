@@ -17,10 +17,7 @@ void Param_State::save(const std::string filename) {
    igl::serialize(avg_edge_length,"avg_edge_length",filename);
    
    igl::serialize(energy,"energy", filename);
-   igl::serialize(global_symmds_energy,"symmds_energy",filename);
-   igl::serialize(log_energy,"log_energy",filename);
-   igl::serialize(conformal_energy,"conformal_energy",filename);   
-
+   
    igl::serialize(global_local_energy,"global_local_energy", filename);
    igl::serialize(global_local_iters, "global_local_iters", filename);
 }
@@ -38,10 +35,6 @@ void Param_State::load(const std::string filename) {
    igl::deserialize(avg_edge_length,"avg_edge_length",filename);
    
    igl::deserialize(energy,"energy", filename);
-   igl::deserialize(global_symmds_energy,"symmds_energy",filename);
-   igl::deserialize(log_energy,"log_energy",filename);
-   igl::deserialize(conformal_energy,"conformal_energy",filename);
-
    igl::deserialize(method,"method",filename);
 
 

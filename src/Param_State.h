@@ -34,12 +34,6 @@ public:
 
   // result measurements
   double energy;
-  double global_symmds_energy;
-  double log_energy;
-  double conformal_energy;
-  double symmds_gradient_norm;
-  double symmds_gradient_maxcoeff;
-  double remeshing_energy;
 
   enum Param_Method {
     GLOBAL_ARAP_IRLS = 0,
