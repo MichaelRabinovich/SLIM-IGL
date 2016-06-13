@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "Param_State.h"
-#include "GlobalLocalParametrization.h"
+#include "Slim.h"
 #include "eigen_stl_utils.h"
 #include "parametrization_utils.h"
 #include "StateManager.h"
@@ -37,15 +37,15 @@ int main(int argc, char *argv[]) {
   Param_State state;
   read_mesh(input_mesh, state);
 
-  StateManager state_manager;
-  GlobalLocalParametrization param(state_manager, &state);
+  //StateManager state_manager;
+  //GlobalLocalParametrization param(state_manager, &state);
 
-  param.init_parametrization();
+  tutte_on_circle(state.V,state.F,state.uv);
   cout << "initialized parametrization" << endl;
-  for (int i = 0; i < ITER_NUM - 1; i++) {
-    cout << "iteration " << i+1 << endl;
-    param.single_iteration();
-  }
+  Slim slim(&state);
+  slim.precompute();
+  slim.solve(state.uv, ITER_NUM);
+
   cout << "Finished, saving results to " << output_mesh << endl;
   igl::writeOBJ(output_mesh, state.V, state.F, Eigen::MatrixXd(), Eigen::MatrixXi(), state.uv, state.F);
 

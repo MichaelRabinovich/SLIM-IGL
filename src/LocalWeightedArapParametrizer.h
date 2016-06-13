@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "AlgorithmStage.h"
-#include "SymmetricDirichlet.h"
 #include "Energy.h"
 #include "FastLsBuildUtils.h"
 #include "Param_State.h"
@@ -35,7 +34,6 @@ public:
   void compute_jacobians(const Eigen::MatrixXd& uv);
 
   Eigen::MatrixXd Ri,Ji;
-  SymmetricDirichlet* symmd_p;
   Eigen::VectorXd W_11; Eigen::VectorXd W_12; Eigen::VectorXd W_21; Eigen::VectorXd W_22;
 private:
 

@@ -31,10 +31,12 @@ Slim::Slim(Param_State* m_state) :
 
 void Slim::precompute() {
   WArap_p->pre_calc();
+  m_state->energy = WArap_p->compute_energy(m_state->V, m_state->F, m_state->uv)/m_state->mesh_area;
 }
 
 void Slim::solve(Eigen::MatrixXd& outV, int iter_num) {
   for (int i = 0; i < iter_num; i++) {
+    cout << "iter number " << i << endl; // todo: remove me
     single_line_search_arap();
   }
 }

@@ -218,8 +218,6 @@ void LocalWeightedArapParametrizer::pre_calc() {
 
     first_solve = true;
 
-    symmd_p = new SymmetricDirichlet(m_state);
-
     cout << "Building data structures" << endl;
     //cout << "building dx k maps" << endl;
     
@@ -324,32 +322,28 @@ double LocalWeightedArapParametrizer::compute_energy(const Eigen::MatrixXd& V,
                                                        const Eigen::MatrixXi& F,  
                                                        Eigen::MatrixXd& uv) {
 
-  if (m_state->global_local_energy == Param_State::SYMMETRIC_DIRICHLET) {
-    double symmd_e = symmd_p->compute_energy(V,F,uv);
+  
+  double symmd_e, log_e, conf_e,norm_arap_e, amips, exp_symmd;
+
+  compute_jacobians(uv);
+  compute_energies_with_jacobians(V,F, Ji, uv,m_state->M, symmd_e,log_e,conf_e,norm_arap_e, amips, exp_symmd, m_state->exp_factor);
+
+  if ( m_state->global_local_energy == Param_State::SYMMETRIC_DIRICHLET) {
+    //cout << "returning symmd energy, time = " << m_state->timer.getElapsedTime() << endl;
     return symmd_e;
-  } else {
-    double symmd_e, log_e, conf_e,norm_arap_e, amips, exp_symmd;
-
-    compute_jacobians(uv);
-    compute_energies_with_jacobians(V,F, Ji, uv,m_state->M, symmd_e,log_e,conf_e,norm_arap_e, amips, exp_symmd, m_state->exp_factor);
-
-    if ( m_state->global_local_energy == Param_State::SYMMETRIC_DIRICHLET) {
-      //cout << "returning symmd energy, time = " << m_state->timer.getElapsedTime() << endl;
-      return symmd_e;
-    } else if (m_state->global_local_energy == Param_State::LOG_ARAP) {
-      //cout << "returning LOG energy" << endl;
-      return log_e;
-    } else if (m_state->global_local_energy == Param_State::CONFORMAL) { // CONFORMAL
-      //cout << "returning conformal energy" << endl;
-      return conf_e;
-    } else if (m_state->global_local_energy == Param_State::ARAP) {
-      //cout << "returning arap energy" << endl;
-      return norm_arap_e;
-    } else if (m_state->global_local_energy == Param_State::AMIPS_ISO_2D) {
-      return amips;
-    } else if (m_state->global_local_energy == Param_State::EXP_symmd) {
-      //cout << "returning exp symmd = " << exp_symmd << endl;
-      return exp_symmd;
-    }
+  } else if (m_state->global_local_energy == Param_State::LOG_ARAP) {
+    //cout << "returning LOG energy" << endl;
+    return log_e;
+  } else if (m_state->global_local_energy == Param_State::CONFORMAL) { // CONFORMAL
+    //cout << "returning conformal energy" << endl;
+    return conf_e;
+  } else if (m_state->global_local_energy == Param_State::ARAP) {
+    //cout << "returning arap energy" << endl;
+    return norm_arap_e;
+  } else if (m_state->global_local_energy == Param_State::AMIPS_ISO_2D) {
+    return amips;
+  } else if (m_state->global_local_energy == Param_State::EXP_symmd) {
+    //cout << "returning exp symmd = " << exp_symmd << endl;
+    return exp_symmd;
   }
 }
