@@ -57,13 +57,6 @@ public:
   };
   GLOBAL_LOCAL_ENERGY global_local_energy;
 
-  enum GLOBAL_LOCAL_INIT {
-  TUTTE,
-  COTAN_WEIGHTS,
-  LSCM
-  };
-  GLOBAL_LOCAL_INIT global_local_init;
-
   // constraints (and or stiffness)
   Eigen::VectorXi b;
   Eigen::MatrixXd bc;

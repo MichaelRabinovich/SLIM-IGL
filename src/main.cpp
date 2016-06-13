@@ -4,7 +4,6 @@
 #include "Slim.h"
 #include "eigen_stl_utils.h"
 #include "parametrization_utils.h"
-#include "StateManager.h"
 
 #include "igl/components.h"
 #include "igl/writeOBJ.h"
@@ -36,9 +35,6 @@ int main(int argc, char *argv[]) {
   cout << "Parameterizing mesh " << input_mesh << endl;
   Param_State state;
   read_mesh(input_mesh, state);
-
-  //StateManager state_manager;
-  //GlobalLocalParametrization param(state_manager, &state);
 
   tutte_on_circle(state.V,state.F,state.uv);
   cout << "initialized parametrization" << endl;

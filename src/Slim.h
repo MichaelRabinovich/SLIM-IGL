@@ -6,9 +6,7 @@
 
 #include <string>
 
-
 #include "LocalWeightedArapParametrizer.h"
-#include "ParametrizationAlgorithm.h"
 
 #include <igl/jet.h>
 #include <igl/readOBJ.h>
@@ -27,7 +25,6 @@ public:
 private:
 
   void single_line_search_arap();
-  void get_linesearch_params(Eigen::MatrixXd& dest_res, Energy** param_energy);
 
   LocalWeightedArapParametrizer* WArap_p;
   Param_State* m_state;
