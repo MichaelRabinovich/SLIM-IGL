@@ -22,8 +22,6 @@
 #include <igl/covariance_scatter_matrix.h>
 #include <igl/edge_lengths.h>
 
-#include "PardisoSolver.h"
-
 #undef NDEBUG
 #include <assert.h>
 #define NDEBUG
@@ -78,25 +76,6 @@ void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::Matr
   SparseMatrix<double> Dy(fn,vn);  Dy.setFromTriplets(Gy_trip.begin(), Gy_trip.end());
   SparseMatrix<double> Dz(fn,vn);  Dz.setFromTriplets(Gz_trip.begin(), Gz_trip.end());
 
-  // This is good only if G = [Dx;Dy;Dz]. If not, then we should build the matrices in a different way
-  // (I guess a for loop?)
-  /*
-  Eigen::SparseMatrix<double> Dx = G.block(0,0,F.rows(),G.cols());
-  Eigen::SparseMatrix<double> Dy = G.block(F.rows(),0,F.rows(),G.cols());
-  Eigen::SparseMatrix<double> Dz = G.block(2*F.rows(),0,F.rows(),G.cols());
-  */
-  // probably need Dx = G([0,3,6,...])
-  /*
-  cout << "G.row(0) = " << endl << G.row(0) << endl;
-  cout << "G.row(1) = " << endl << G.row(1) << endl;
-  cout << "G.rows() = " << G.rows() << " G.cols() = " << G.cols() << endl;
-  Eigen::VectorXi R = igl::colon<int>(0,F.rows()-1);
-  Eigen::VectorXi Rx = 3*R; Eigen::VectorXi Ry = 3*R.array() +1; Eigen::VectorXi Rz = 3*R.array() +2;
-  Eigen::VectorXi C = igl::colon<int>(0,G.cols()-1);
-  SparseMatrix<double> Dx;  igl::slice(G, Rx, C, Dx);
-  SparseMatrix<double> Dy;  igl::slice(G, Ry, C, Dy);
-  SparseMatrix<double> Dz;  igl::slice(G, Rz, C, Dz);
-  */
   D1 = F1.col(0).asDiagonal()*Dx + F1.col(1).asDiagonal()*Dy + F1.col(2).asDiagonal()*Dz;
   D2 = F2.col(0).asDiagonal()*Dx + F2.col(1).asDiagonal()*Dy + F2.col(2).asDiagonal()*Dz;
 }
