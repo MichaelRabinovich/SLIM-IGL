@@ -18,7 +18,7 @@
 
 
 
-LocalWeightedArapParametrizer::LocalWeightedArapParametrizer(Param_State* state, bool remeshing) : 
+LocalWeightedArapParametrizer::LocalWeightedArapParametrizer(SLIMData* state, bool remeshing) : 
                                   m_state(state) {
     // empty
 }
@@ -52,7 +52,7 @@ void LocalWeightedArapParametrizer::compute_jacobians(const Eigen::MatrixXd& uv)
 }
 
 class WeightUpdater {
-    Param_State* m_state;
+    SLIMData* m_state;
     const Eigen::MatrixXd& Ji; Eigen::MatrixXd& Ri;
     Eigen::VectorXd& W_11; Eigen::VectorXd& W_12; Eigen::VectorXd& W_21; Eigen::VectorXd& W_22;
 public:
@@ -75,17 +75,17 @@ public:
           s1 = sing(0); s2 = sing(1);
 
           // Update Weights
-          if (m_state->global_local_energy == Param_State::SYMMETRIC_DIRICHLET) {
+          if (m_state->global_local_energy == SLIMData::SYMMETRIC_DIRICHLET) {
             double s1_g = 2* (s1-pow(s1,-3)); 
             double s2_g = 2 * (s2-pow(s2,-3));
             m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));
 
-          } else if (m_state->global_local_energy == Param_State::LOG_ARAP) {
+          } else if (m_state->global_local_energy == SLIMData::LOG_ARAP) {
             // log grad = (j^-t)* log(j'*j)
             double s1_g = 2 * (log(s1)/s1); 
             double s2_g = 2 * (log(s2)/s2); 
             m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));
-          } else if (m_state->global_local_energy == Param_State::CONFORMAL ){ 
+          } else if (m_state->global_local_energy == SLIMData::CONFORMAL ){ 
             
             double s1_g = 1/(2*s2) - s2/(2*pow(s1,2));
             double s2_g = 1/(2*s1) - s1/(2*pow(s2,2));
@@ -100,9 +100,9 @@ public:
             ri = ui*closest_sing_vec.asDiagonal()*vi.transpose();
 
             
-          } else if (m_state->global_local_energy == Param_State::ARAP) {
+          } else if (m_state->global_local_energy == SLIMData::ARAP) {
             m_sing_new << 1,1;
-          } else if (m_state->global_local_energy == Param_State::AMIPS_ISO_2D) {
+          } else if (m_state->global_local_energy == SLIMData::AMIPS_ISO_2D) {
             // Amips ISO energy in singular values: exp(5* (  0.5*(s1/s2 +s2/s1) + 0.25*( s1*s2 + 1/(s1*s2) )  ) )
             // Partial derivatives for s1 is: 5*( 0.25 * (s2-1/(s2*s1^2)) + 0.5*(1/s2 - s2/(s1^2))  )* exp(5* (  0.5*(s1/s2 +s2/s1) + 0.25*( s1*s2 + 1/(s1*s2) )  ) )
             double exp_thing = exp(exp_factor*(0.5*(s1/s2 + s2/s1) + 0.25*(s1*s2 + pow(s1*s2,-1))));
@@ -114,7 +114,7 @@ public:
 
             closest_sing_vec << s1_zero, s2_zero;
             ri = ui*closest_sing_vec.asDiagonal()*vi.transpose();
-          } else if (m_state->global_local_energy == Param_State::EXP_symmd) {
+          } else if (m_state->global_local_energy == SLIMData::EXP_symmd) {
               double s1_g = 2* (s1-pow(s1,-3)); 
               double s2_g = 2 * (s2-pow(s2,-3));
               m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));        
@@ -140,7 +140,7 @@ public:
           Ri(i,0) = ri(0,0); Ri(i,1) = ri(1,0); Ri(i,2) = ri(0,1); Ri(i,3) = ri(1,1);
          }
     }
-    WeightUpdater( Param_State* m_state, const Eigen::MatrixXd& Ji, Eigen::MatrixXd& Ri,
+    WeightUpdater(SLIMData* m_state, const Eigen::MatrixXd& Ji, Eigen::MatrixXd& Ri,
     Eigen::VectorXd& W_11, Eigen::VectorXd& W_12, Eigen::VectorXd& W_21, Eigen::VectorXd& W_22 ) :
         m_state(m_state),Ji(Ji),Ri(Ri),W_11(W_11),W_12(W_12),W_21(W_21),W_22(W_22)
     {}
@@ -328,21 +328,21 @@ double LocalWeightedArapParametrizer::compute_energy(const Eigen::MatrixXd& V,
   compute_jacobians(uv);
   compute_energies_with_jacobians(V,F, Ji, uv,m_state->M, symmd_e,log_e,conf_e,norm_arap_e, amips, exp_symmd, m_state->exp_factor);
 
-  if ( m_state->global_local_energy == Param_State::SYMMETRIC_DIRICHLET) {
+  if ( m_state->global_local_energy == SLIMData::SYMMETRIC_DIRICHLET) {
     //cout << "returning symmd energy, time = " << m_state->timer.getElapsedTime() << endl;
     return symmd_e;
-  } else if (m_state->global_local_energy == Param_State::LOG_ARAP) {
+  } else if (m_state->global_local_energy == SLIMData::LOG_ARAP) {
     //cout << "returning LOG energy" << endl;
     return log_e;
-  } else if (m_state->global_local_energy == Param_State::CONFORMAL) { // CONFORMAL
+  } else if (m_state->global_local_energy == SLIMData::CONFORMAL) { // CONFORMAL
     //cout << "returning conformal energy" << endl;
     return conf_e;
-  } else if (m_state->global_local_energy == Param_State::ARAP) {
+  } else if (m_state->global_local_energy == SLIMData::ARAP) {
     //cout << "returning arap energy" << endl;
     return norm_arap_e;
-  } else if (m_state->global_local_energy == Param_State::AMIPS_ISO_2D) {
+  } else if (m_state->global_local_energy == SLIMData::AMIPS_ISO_2D) {
     return amips;
-  } else if (m_state->global_local_energy == Param_State::EXP_symmd) {
+  } else if (m_state->global_local_energy == SLIMData::EXP_symmd) {
     //cout << "returning exp symmd = " << exp_symmd << endl;
     return exp_symmd;
   }

@@ -1,6 +1,6 @@
 #include "Slim.h"
 
-#include "Param_State.h"
+#include "SLIMData.h"
 #include "eigen_stl_utils.h"
 #include "parametrization_utils.h"
 #include "LinesearchParametrizer.h"
@@ -22,7 +22,7 @@
 
 using namespace std;
 
-Slim::Slim(Param_State* m_state) : 
+Slim::Slim(SLIMData* m_state) : 
       m_state(m_state), WArap_p(NULL) {
   assert (m_state->F.cols() == 3);
   

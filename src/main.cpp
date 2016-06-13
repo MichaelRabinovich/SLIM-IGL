@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "Param_State.h"
+#include "SLIMData.h"
 #include "Slim.h"
 #include "eigen_stl_utils.h"
 #include "parametrization_utils.h"
@@ -19,8 +19,10 @@
 
 using namespace std;
 
-void read_mesh(const std::string& mesh_file, Param_State& state);
 void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXd& areas);
+
+Eigen::MatrixXd V;
+Eigen::MatrixXi F;
 
 const int ITER_NUM = 20;
 
@@ -32,43 +34,26 @@ int main(int argc, char *argv[]) {
   const string input_mesh = argv[1]; 
   const string output_mesh = argv[2];
 
-  cout << "Parameterizing mesh " << input_mesh << endl;
-  Param_State state;
-  read_mesh(input_mesh, state);
+  cout << "Reading mesh " << input_mesh << endl;
+  igl::read_triangle_mesh(input_mesh, V, F);
 
-  tutte_on_circle(state.V,state.F,state.uv);
-  cout << "initialized parametrization" << endl;
-  Slim slim(&state);
-  slim.precompute();
-  slim.solve(state.uv, ITER_NUM);
-
-  cout << "Finished, saving results to " << output_mesh << endl;
-  igl::writeOBJ(output_mesh, state.V, state.F, Eigen::MatrixXd(), Eigen::MatrixXi(), state.uv, state.F);
-
-  return 0;
-}
-
-void read_mesh(const std::string& mesh_file, Param_State& state) {
-  memset( &state, 0, sizeof( Param_State ) );
-  state.method = Param_State::GLOBAL_ARAP_IRLS;
-  state.proximal_p = 0.0001;
-
-
-  cout << "\tReading mesh object" << endl;
-  igl::read_triangle_mesh(mesh_file, state.V, state.F);
-  state.v_num = state.V.rows();
-  state.f_num = state.F.rows();
-
-  // set uv coords scale
-  igl::doublearea(state.V,state.F, state.M); state.M /= 2.;
-
-  state.global_local_energy = Param_State::SYMMETRIC_DIRICHLET;
-  check_mesh_for_issues(state.V,state.F, state.M);
+  SLIMData sData(V,F);
+  check_mesh_for_issues(sData.V,sData.F, sData.M);
   cout << "\tMesh is valid!" << endl;
 
-  state.mesh_area = state.M.sum();
-  state.V /= sqrt(state.mesh_area);
-  state.mesh_area = 1;
+  sData.method = SLIMData::GLOBAL_ARAP_IRLS;
+  sData.global_local_energy = SLIMData::SYMMETRIC_DIRICHLET;
+
+  tutte_on_circle(sData.V,sData.F,sData.uv);
+  cout << "initialized parametrization" << endl;
+  Slim slim(&sData);
+  slim.precompute();
+  slim.solve(sData.uv, ITER_NUM);
+
+  cout << "Finished, saving results to " << output_mesh << endl;
+  igl::writeOBJ(output_mesh, sData.V, sData.F, Eigen::MatrixXd(), Eigen::MatrixXi(), sData.uv, sData.F);
+
+  return 0;
 }
 
 void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXd& areas) {

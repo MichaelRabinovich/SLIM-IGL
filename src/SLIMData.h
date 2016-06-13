@@ -1,5 +1,5 @@
-#ifndef PARAM_STATE_H
-#define PARAM_STATE_H
+#ifndef SLIM_DATA_H
+#define SLIM_DATA_H
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -10,11 +10,11 @@
 #include "igl/arap.h"
 #include "igl/Timer.h"
 
-struct Param_State {
+struct SLIMData {
 
 public:
 
-  Param_State(){}
+  SLIMData(Eigen::MatrixXd& V, Eigen::MatrixXi& F);
 
   void save(const std::string filename);
   void load(const std::string filename);
@@ -65,4 +65,4 @@ public:
   double exp_factor;
 };
 
-#endif // PARAM_STATE_H
+#endif // SLIM_DATA_H

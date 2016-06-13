@@ -84,7 +84,7 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/eigen_stl_utils.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/parametrization_utils.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Param_State.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/SLIMData.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/LocalWeightedArapParametrizer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/LinesearchParametrizer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/FastLsBuildUtils.cpp

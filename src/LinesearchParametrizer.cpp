@@ -9,7 +9,7 @@
 #include <assert.h>
 #define NDEBUG
 
-LinesearchParametrizer::LinesearchParametrizer (Param_State* param_state) : m_state(param_state) {
+LinesearchParametrizer::LinesearchParametrizer (SLIMData* param_state) : m_state(param_state) {
   // empty
 }
 

@@ -1,10 +1,19 @@
-#include "Param_State.h"
+#include "SLIMData.h"
 
 #include "igl/serialize.h"
 
 using namespace std;
 
-void Param_State::save(const std::string filename) {
+SLIMData::SLIMData(Eigen::MatrixXd& V_in, Eigen::MatrixXi& F_in) : V(V_in), F(F_in) {
+  proximal_p = 0.0001;
+
+  v_num = V.rows();
+  f_num = F.rows();
+  igl::doublearea(V,F,M); M /= 2.;
+  mesh_area = M.sum();
+}
+
+void SLIMData::save(const std::string filename) {
    
    igl::serialize(V, "V", filename, true);
    igl::serialize(F,"F",filename);
@@ -23,7 +32,7 @@ void Param_State::save(const std::string filename) {
    igl::serialize(bc,"bc",filename);
 }
 
-void Param_State::load(const std::string filename) {
+void SLIMData::load(const std::string filename) {
    igl::deserialize(V,"V",filename);
    igl::deserialize(F,"F",filename);
    igl::deserialize(M,"M",filename);

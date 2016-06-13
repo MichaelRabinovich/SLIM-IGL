@@ -10,7 +10,7 @@
 #include "AlgorithmStage.h"
 #include "Energy.h"
 #include "FastLsBuildUtils.h"
-#include "Param_State.h"
+#include "SLIMData.h"
 #include "parametrization_utils.h"
 
 #include "igl/arap.h"
@@ -18,7 +18,7 @@
 class LocalWeightedArapParametrizer : public Energy {
 
 public:
-  LocalWeightedArapParametrizer(Param_State* state, bool remeshing = false);
+  LocalWeightedArapParametrizer(SLIMData* state, bool remeshing = false);
 
   void parametrize( const Eigen::MatrixXd& V,
     const Eigen::MatrixXi& F,
@@ -45,7 +45,7 @@ private:
 
   void add_proximal_penalty();
   
-  Param_State* m_state;
+  SLIMData* m_state;
   Eigen::VectorXd w11Dx,w12Dx,w11Dy,w12Dy,w21Dx,w22Dx,w21Dy,w22Dy;
   Eigen::VectorXd rhs;
 
