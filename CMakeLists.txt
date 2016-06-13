@@ -91,6 +91,7 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/SymmetricDirichlet.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/FastLsBuildUtils.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/StateManager.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Slim.cpp
   ${ADDITIONAL_SOURCES}
 )
 

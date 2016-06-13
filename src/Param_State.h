@@ -56,7 +56,6 @@ public:
   EXP_symmd
   };
   GLOBAL_LOCAL_ENERGY global_local_energy;
-  int global_local_iters;
 
   enum GLOBAL_LOCAL_INIT {
   TUTTE,

@@ -17,9 +17,10 @@ void Param_State::save(const std::string filename) {
    igl::serialize(avg_edge_length,"avg_edge_length",filename);
    
    igl::serialize(energy,"energy", filename);
-   
-   igl::serialize(global_local_energy,"global_local_energy", filename);
-   igl::serialize(global_local_iters, "global_local_iters", filename);
+   igl::serialize(method,"method",filename);
+
+   igl::serialize(b,"b",filename);
+   igl::serialize(bc,"bc",filename);
 }
 
 void Param_State::load(const std::string filename) {
@@ -31,15 +32,10 @@ void Param_State::load(const std::string filename) {
    igl::deserialize(f_num,"f_num",filename);
    
    igl::deserialize(mesh_area,"mesh_area",filename);
-   
    igl::deserialize(avg_edge_length,"avg_edge_length",filename);
    
    igl::deserialize(energy,"energy", filename);
    igl::deserialize(method,"method",filename);
-
-
-   igl::deserialize(global_local_energy,"global_local_energy", filename);
-   igl::deserialize(global_local_iters, "global_local_iters", filename);
 
    igl::deserialize(b,"b",filename);
    igl::deserialize(bc,"bc",filename);

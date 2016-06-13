@@ -1,4 +1,4 @@
-#include "GlobalLocalParametrization.h"
+#include "Slim.h"
 
 #include "Param_State.h"
 #include "eigen_stl_utils.h"
@@ -22,37 +22,31 @@
 
 using namespace std;
 
-GlobalLocalParametrization::GlobalLocalParametrization(StateManager& state_manager, Param_State* m_state) : 
-      ParametrizationAlgorithm(state_manager, m_state), WArap_p(NULL) {
+Slim::Slim(Param_State* m_state) : 
+      m_state(m_state), WArap_p(NULL) {
   assert (m_state->F.cols() == 3);
   
   WArap_p = new LocalWeightedArapParametrizer(m_state);
 }
 
-void GlobalLocalParametrization::init_parametrization() {
+void Slim::precompute() {
   WArap_p->pre_calc();
-  dirichlet_on_circle(m_state->V,m_state->F,m_state->uv);
-  if (count_flips(m_state->V,m_state->F,m_state->uv) > 0) {
-      //cout << "Cotan weights flattening has flips! Initializing with the positive cotan hack!" << endl;
-      //dirichlet_on_circle_positive(m_state->V,m_state->F,m_state->uv);
-      tutte_on_circle(m_state->V,m_state->F,m_state->uv);
+}
+
+void Slim::solve(Eigen::MatrixXd& outV, int iter_num) {
+  for (int i = 0; i < iter_num; i++) {
+    single_line_search_arap();
   }
-  m_state->energy = WArap_p->compute_energy(m_state->V, m_state->F, m_state->uv)/m_state->mesh_area;
 }
 
-void GlobalLocalParametrization::single_iteration() {
-  single_line_search_arap();
-  //m_state->global_local_iters++;
-}
-
-void GlobalLocalParametrization::get_linesearch_params(Eigen::MatrixXd& dest_res,
+void Slim::get_linesearch_params(Eigen::MatrixXd& dest_res,
                                                         Energy** param_energy) {
   dest_res = m_state->uv;
   WArap_p->parametrize(m_state->V,m_state->F, m_state->b,m_state->bc, dest_res);
   *param_energy = WArap_p;
 }
 
-void GlobalLocalParametrization::single_line_search_arap() {
+void Slim::single_line_search_arap() {
   // weighted arap for riemannian metric
   LinesearchParametrizer linesearchParam(m_state);
   Eigen::MatrixXd dest_res;
