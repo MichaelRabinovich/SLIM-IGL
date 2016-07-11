@@ -217,12 +217,10 @@ void WeightedGlobalLocal::build_linear_system(Eigen::SparseMatrix<double> &L) {
   Eigen::SparseMatrix<double> At = A.transpose();
   At.makeCompressed();
   
-  //cout << "Assembled At: " << m_state->timer.getElapsedTime() << endl;
   Eigen::VectorXd M4(4*f_n);
   for (int i = 0; i < f_n; i++) {
     M4(i) = M4(i+f_n) = M4(i+2*f_n) = M4(i+3*f_n) = m_state.M(i);
   }
-  //cout << "Calculated AtA: " << m_state->timer.getElapsedTime() << endl;
 
   Eigen::SparseMatrix<double> id_m(At.rows(),At.rows()); id_m.setIdentity();
 

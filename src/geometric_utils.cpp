@@ -28,7 +28,7 @@ void map_vertices_to_circle_area_normalized(
   const Eigen::VectorXi& bnd,
   Eigen::MatrixXd& UV) {
   
-  Eigen::VectorXd dblArea_orig; // TODO: remove me later, waste of computations
+  Eigen::VectorXd dblArea_orig;
   igl::doublearea(V,F, dblArea_orig);
   double area = dblArea_orig.sum()/2;
   double radius = sqrt(area / (M_PI));
