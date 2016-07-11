@@ -25,22 +25,8 @@ void WeightedGlobalLocal::compute_map( const Eigen::MatrixXd& V, const Eigen::Ma
 
 void WeightedGlobalLocal::compute_jacobians(const Eigen::MatrixXd& uv) {
   // Ji=[D1*u,D2*u,D1*v,D2*v];
-  int k_idx = 0;
-  for (int i = 0; i < f_n; i++) {
-    const int col1 = dxj[k_idx]-1; const int col2 = dxj[k_idx+1]-1; const int col3 = dxj[k_idx+2]-1;
-
-    const double a_x_k = a_x(k_idx); const double a_x_k_1 = a_x(k_idx+1); const double a_x_k_2 = a_x(k_idx+2);
-
-    Ji(i,0) = a_x_k * uv(col1,0) +  a_x_k_1 * uv(col2,0) +  a_x_k_2* uv(col3,0); // Dx*u
-    Ji(i,2) = a_x_k * uv(col1,1) +  a_x_k_1 * uv(col2,1) + a_x_k_2 * uv(col3,1); // Dx*v
-
-    const double a_y_k = a_y(k_idx); const double a_y_k_1 = a_y(k_idx+1); const double a_y_k_2 = a_y(k_idx+2);
-    Ji(i,1) = a_y_k * uv(col1,0) + a_y_k_1 * uv(col2,0) + a_y_k_2 * uv(col3,0); // Dy*u
-    Ji(i,3) = a_y_k * uv(col1,1) + a_y_k_1 * uv(col2,1) + a_y_k_2 * uv(col3,1); // Dy*v
-    
-    k_idx +=3;
-  }
-  
+  Ji.col(0) = Dx*uv.col(0); Ji.col(1) = Dy*uv.col(0);
+  Ji.col(2) = Dx*uv.col(1); Ji.col(3) = Dy*uv.col(1);
 }
 
 void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::MatrixXd& V,
@@ -204,7 +190,6 @@ void WeightedGlobalLocal::pre_calc() {
     Eigen::MatrixXd F1,F2,F3;
 
     igl::local_basis(m_state.V,m_state.F,F1,F2,F3);
-    Eigen::SparseMatrix<double> Dx,Dy;
     compute_surface_gradient_matrix(m_state.V,m_state.F,F1,F2,Dx,Dy);
 
     first_solve = true;

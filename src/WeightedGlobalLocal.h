@@ -34,6 +34,7 @@ public:
 
   Eigen::MatrixXd Ri,Ji;
   Eigen::VectorXd W_11; Eigen::VectorXd W_12; Eigen::VectorXd W_21; Eigen::VectorXd W_22;
+  Eigen::SparseMatrix<double> Dx,Dy;
 private:
 
   void update_weights_and_closest_rotations(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, Eigen::MatrixXd& uv);
