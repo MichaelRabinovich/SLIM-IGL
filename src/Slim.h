@@ -17,17 +17,17 @@ class Slim {
 
 public:
 
-  Slim(SLIMData* m_state);
+  Slim(SLIMData& m_state);
 
   void precompute();
-  void solve(Eigen::MatrixXd& outV, int iter_num);
+  void solve(int iter_num);
 
 private:
 
-  void single_line_search_arap();
+  void slim_iter();
 
   LocalWeightedArapParametrizer* WArap_p;
-  SLIMData* m_state;
+  SLIMData& m_state;
 };
 
 #endif // SLIM_H

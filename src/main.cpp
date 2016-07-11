@@ -3,7 +3,7 @@
 #include "SLIMData.h"
 #include "Slim.h"
 #include "eigen_stl_utils.h"
-#include "parametrization_utils.h"
+#include "geometric_utils.h"
 
 #include "igl/components.h"
 #include "igl/writeOBJ.h"
@@ -24,7 +24,7 @@ void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::Vector
 Eigen::MatrixXd V;
 Eigen::MatrixXi F;
 
-const int ITER_NUM = 20;
+const int ITER_NUM = 5;
 
 int main(int argc, char *argv[]) {
   if (argc < 3) {
@@ -41,17 +41,17 @@ int main(int argc, char *argv[]) {
   check_mesh_for_issues(sData.V,sData.F, sData.M);
   cout << "\tMesh is valid!" << endl;
 
-  sData.method = SLIMData::GLOBAL_ARAP_IRLS;
   sData.global_local_energy = SLIMData::SYMMETRIC_DIRICHLET;
 
-  tutte_on_circle(sData.V,sData.F,sData.uv);
+  tutte_on_circle(sData.V,sData.F,sData.V_o);
+  
   cout << "initialized parametrization" << endl;
-  Slim slim(&sData);
+  Slim slim(sData);
   slim.precompute();
-  slim.solve(sData.uv, ITER_NUM);
+  slim.solve(ITER_NUM);
 
   cout << "Finished, saving results to " << output_mesh << endl;
-  igl::writeOBJ(output_mesh, sData.V, sData.F, Eigen::MatrixXd(), Eigen::MatrixXi(), sData.uv, sData.F);
+  igl::writeOBJ(output_mesh, sData.V, sData.F, Eigen::MatrixXd(), Eigen::MatrixXi(), sData.V_o, sData.F);
 
   return 0;
 }

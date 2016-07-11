@@ -2,7 +2,7 @@
 
 #include "SLIMData.h"
 #include "eigen_stl_utils.h"
-#include "parametrization_utils.h"
+#include "geometric_utils.h"
 #include "LinesearchParametrizer.h"
 
 
@@ -22,34 +22,33 @@
 
 using namespace std;
 
-Slim::Slim(SLIMData* m_state) : 
+Slim::Slim(SLIMData& m_state) : 
       m_state(m_state), WArap_p(NULL) {
-  assert (m_state->F.cols() == 3);
+  assert (m_state.F.cols() == 3);
   
   WArap_p = new LocalWeightedArapParametrizer(m_state);
 }
 
 void Slim::precompute() {
   WArap_p->pre_calc();
-  m_state->energy = WArap_p->compute_energy(m_state->V, m_state->F, m_state->uv)/m_state->mesh_area;
+  m_state.energy = WArap_p->compute_energy(m_state.V, m_state.F, m_state.V_o)/m_state.mesh_area;
 }
 
-void Slim::solve(Eigen::MatrixXd& outV, int iter_num) {
+void Slim::solve(int iter_num) {
   for (int i = 0; i < iter_num; i++) {
     cout << "iter number " << i << endl; // todo: remove me
-    single_line_search_arap();
+    slim_iter();
   }
 }
 
-void Slim::single_line_search_arap() {
+void Slim::slim_iter() {
   // weighted arap for riemannian metric
   LinesearchParametrizer linesearchParam(m_state);
   Eigen::MatrixXd dest_res;
-  dest_res = m_state->uv;
-  WArap_p->parametrize(m_state->V,m_state->F, m_state->b,m_state->bc, dest_res);
+  dest_res = m_state.V_o;
+  WArap_p->parametrize(m_state.V,m_state.F, m_state.b,m_state.bc, dest_res);
 
-  Eigen::MatrixXd old_uv = m_state->uv;
-  double old_energy = m_state->energy;
+  double old_energy = m_state.energy;
 
-  m_state->energy = linesearchParam.parametrize(m_state->V,m_state->F, m_state->uv, dest_res, WArap_p, m_state->energy*m_state->mesh_area)/m_state->mesh_area;
+  m_state.energy = linesearchParam.parametrize(m_state.V,m_state.F, m_state.V_o, dest_res, WArap_p, m_state.energy*m_state.mesh_area)/m_state.mesh_area;
 }

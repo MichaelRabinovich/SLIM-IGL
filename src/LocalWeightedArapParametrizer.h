@@ -11,14 +11,14 @@
 #include "Energy.h"
 #include "FastLsBuildUtils.h"
 #include "SLIMData.h"
-#include "parametrization_utils.h"
+#include "geometric_utils.h"
 
 #include "igl/arap.h"
 
 class LocalWeightedArapParametrizer : public Energy {
 
 public:
-  LocalWeightedArapParametrizer(SLIMData* state, bool remeshing = false);
+  LocalWeightedArapParametrizer(SLIMData& state, bool remeshing = false);
 
   void parametrize( const Eigen::MatrixXd& V,
     const Eigen::MatrixXi& F,
@@ -44,8 +44,11 @@ private:
   void get_At_AtMA_fast();
 
   void add_proximal_penalty();
+
+  double compute_energy_with_jacobians(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, 
+    const Eigen::MatrixXd& Ji, Eigen::MatrixXd& V_o, Eigen::VectorXd& areas);
   
-  SLIMData* m_state;
+  SLIMData& m_state;
   Eigen::VectorXd w11Dx,w12Dx,w11Dy,w12Dy,w21Dx,w22Dx,w21Dy,w22Dy;
   Eigen::VectorXd rhs;
 

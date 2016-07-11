@@ -15,7 +15,7 @@ class LinesearchParametrizer {
 
 public:
   // does precomputation if it was not already done
-  LinesearchParametrizer(SLIMData* param_state);
+  LinesearchParametrizer(SLIMData& param_state);
 
   double parametrize( const Eigen::MatrixXd& V,
     const Eigen::MatrixXi& F,
@@ -42,7 +42,7 @@ private:
   double get_smallest_pos_quad_zero(double a,double b, double c);
   int SolveP3(std::vector<double>& x,double a,double b,double c);
 
-  SLIMData* m_state;
+  SLIMData& m_state;
 };
 
 #endif // LINE_SEARCH_PARAMETRIZER_H

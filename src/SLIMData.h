@@ -23,7 +23,7 @@ public:
   Eigen::MatrixXd V;
   Eigen::MatrixXi F;
   Eigen::VectorXd M;
-  Eigen::MatrixXd uv;
+  Eigen::MatrixXd V_o; // result vertices
 
   int v_num;
   int f_num;
@@ -34,17 +34,6 @@ public:
 
   // result measurements
   double energy;
-
-  enum Param_Method {
-    GLOBAL_ARAP_IRLS = 0,
-    symmd,
-    REMESHING,
-    REMESHING_3D,
-    BAR_DEFORMATION_3D,
-    EQUALITY_CONSTRAINTS_DEMO,
-    SEAMLESS_DEMO
-  };
-  Param_Method method;
 
   enum GLOBAL_LOCAL_ENERGY {
   ARAP,

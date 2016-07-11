@@ -1,7 +1,7 @@
 #include "LinesearchParametrizer.h"
 
 #include "eigen_stl_utils.h"
-#include "parametrization_utils.h"
+#include "geometric_utils.h"
 
 #include "igl/avg_edge_length.h"
 
@@ -9,7 +9,7 @@
 #include <assert.h>
 #define NDEBUG
 
-LinesearchParametrizer::LinesearchParametrizer (SLIMData* param_state) : m_state(param_state) {
+LinesearchParametrizer::LinesearchParametrizer (SLIMData& param_state) : m_state(param_state) {
   // empty
 }
 
