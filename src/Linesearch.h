@@ -1,5 +1,5 @@
-#ifndef LINE_SEARCH_PARAMETRIZER_H
-#define LINE_SEARCH_PARAMETRIZER_H
+#ifndef LINESEARCH_H
+#define LINESEARCH_H
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -7,17 +7,16 @@
 #include <set>
 #include <vector>
 
-#include "AlgorithmStage.h"
 #include "Energy.h"
 #include "SLIMData.h"
 
-class LinesearchParametrizer {
+class Linesearch {
 
 public:
   // does precomputation if it was not already done
-  LinesearchParametrizer(SLIMData& param_state);
+  Linesearch(SLIMData& param_state);
 
-  double parametrize( const Eigen::MatrixXd& V,
+  double compute( const Eigen::MatrixXd& V,
     const Eigen::MatrixXi& F,
     Eigen::MatrixXd& cur_uv,
     Eigen::MatrixXd& dst_uv,
@@ -45,4 +44,4 @@ private:
   SLIMData& m_state;
 };
 
-#endif // LINE_SEARCH_PARAMETRIZER_H
+#endif // LINESEARCH_H

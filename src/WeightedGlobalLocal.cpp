@@ -1,4 +1,4 @@
-#include "LocalWeightedArapParametrizer.h"
+#include "WeightedGlobalLocal.h"
 
 #include "igl/arap.h"
 #include "igl/cat.h"
@@ -12,18 +12,18 @@
 #include <Eigen/Sparse>
 #include <Eigen/SparseQR>
 
-LocalWeightedArapParametrizer::LocalWeightedArapParametrizer(SLIMData& state, bool remeshing) : 
+WeightedGlobalLocal::WeightedGlobalLocal(SLIMData& state, bool remeshing) : 
                                   m_state(state) {
 }
 
-void LocalWeightedArapParametrizer::parametrize( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
+void WeightedGlobalLocal::compute_map( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
               Eigen::VectorXi& b, Eigen::MatrixXd& bc, Eigen::MatrixXd& uv) {
 
   update_weights_and_closest_rotations(V,F,uv);
   solve_weighted_arap(V,F,uv,b,bc);
 }
 
-void LocalWeightedArapParametrizer::compute_jacobians(const Eigen::MatrixXd& uv) {
+void WeightedGlobalLocal::compute_jacobians(const Eigen::MatrixXd& uv) {
   // Ji=[D1*u,D2*u,D1*v,D2*v];
   int k_idx = 0;
   for (int i = 0; i < f_n; i++) {
@@ -43,7 +43,7 @@ void LocalWeightedArapParametrizer::compute_jacobians(const Eigen::MatrixXd& uv)
   
 }
 
-void LocalWeightedArapParametrizer::update_weights_and_closest_rotations(const Eigen::MatrixXd& V,
+void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::MatrixXd& V,
        const Eigen::MatrixXi& F, Eigen::MatrixXd& uv) {
   compute_jacobians(uv);
 
@@ -148,7 +148,7 @@ void LocalWeightedArapParametrizer::update_weights_and_closest_rotations(const E
    }
 }
 
-void LocalWeightedArapParametrizer::solve_weighted_arap(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
+void WeightedGlobalLocal::solve_weighted_arap(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
         Eigen::MatrixXd& uv, Eigen::VectorXi& soft_b_p, Eigen::MatrixXd& soft_bc_p) {
   using namespace Eigen;
 
@@ -196,7 +196,7 @@ void LocalWeightedArapParametrizer::solve_weighted_arap(const Eigen::MatrixXd& V
   
 }
 
-void LocalWeightedArapParametrizer::pre_calc() {
+void WeightedGlobalLocal::pre_calc() {
   if (!has_pre_calc) {
     f_n = m_state.F.rows(); v_n = m_state.V.rows();
     W_11.resize(f_n); W_12.resize(f_n); W_21.resize(f_n); W_22.resize(f_n);
@@ -226,7 +226,7 @@ void LocalWeightedArapParametrizer::pre_calc() {
   }
 }
 
-void LocalWeightedArapParametrizer::get_At_AtMA_fast() {
+void WeightedGlobalLocal::get_At_AtMA_fast() {
   using namespace Eigen;
 
   rhs.setZero();
@@ -274,9 +274,10 @@ void LocalWeightedArapParametrizer::get_At_AtMA_fast() {
   add_dx_mult_dx_to_K(w22Dx,w22Dx, K, inst4,inst4_idx); add_dx_mult_dx_to_K(w22Dy,w22Dy, K, inst4,inst4_idx);
 
   add_proximal_penalty();
+  add_soft_constraints();
 }
 
-void LocalWeightedArapParametrizer::add_proximal_penalty() {
+void WeightedGlobalLocal::add_proximal_penalty() {
   double h = m_state.proximal_p; 
     // add proximal penalty
     for (int i = 0; i < v_n; i++) {
@@ -296,14 +297,26 @@ void LocalWeightedArapParametrizer::add_proximal_penalty() {
   }
 }
 
-double LocalWeightedArapParametrizer::compute_energy(const Eigen::MatrixXd& V,
+void WeightedGlobalLocal::add_soft_constraints() {
+  // update rhs
+  for (int i = 0; i < m_state.b.rows(); i++) {
+    int v_idx = m_state.b(i);
+    rhs(v_idx) += m_state.soft_const_p * m_state.bc(i,0);
+    rhs(v_n + v_idx) += m_state.soft_const_p * m_state.bc(i,1);
+
+    K(ai(v_idx)-1) += m_state.soft_const_p;
+    K(ai(v_n+v_idx)-1) += m_state.soft_const_p;
+  }
+}
+
+double WeightedGlobalLocal::compute_energy(const Eigen::MatrixXd& V,
                                                        const Eigen::MatrixXi& F,  
                                                        Eigen::MatrixXd& V_o) {
   compute_jacobians(V_o);
   return compute_energy_with_jacobians(V,F, Ji, V_o,m_state.M);
 }
 
-double LocalWeightedArapParametrizer::compute_energy_with_jacobians(const Eigen::MatrixXd& V,
+double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd& V,
        const Eigen::MatrixXi& F, const Eigen::MatrixXd& Ji, Eigen::MatrixXd& uv, Eigen::VectorXd& areas) {
 
   int f_n = F.rows();

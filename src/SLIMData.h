@@ -28,9 +28,6 @@ public:
   int v_num;
   int f_num;
 
-  double mesh_area;
-  double avg_edge_length;
-
   // result measurements
   double energy;
 
@@ -52,6 +49,9 @@ public:
 
   double proximal_p;
   double exp_factor; // used for exponential energies, ignored otherwise
+
+  double mesh_area;
+  double avg_edge_length;
 };
 
 #endif // SLIM_DATA_H

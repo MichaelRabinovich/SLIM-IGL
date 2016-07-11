@@ -2,7 +2,7 @@
 
 #include "SLIMData.h"
 #include "geometric_utils.h"
-#include "LinesearchParametrizer.h"
+#include "Linesearch.h"
 
 
 #include <igl/boundary_loop.h>
@@ -18,15 +18,15 @@
 using namespace std;
 
 Slim::Slim(SLIMData& m_state) : 
-      m_state(m_state), WArap_p(NULL) {
+      m_state(m_state), wGlobalLocal(NULL) {
   assert (m_state.F.cols() == 3);
   
-  WArap_p = new LocalWeightedArapParametrizer(m_state);
+  wGlobalLocal = new WeightedGlobalLocal(m_state);
 }
 
 void Slim::precompute() {
-  WArap_p->pre_calc();
-  m_state.energy = WArap_p->compute_energy(m_state.V, m_state.F, m_state.V_o)/m_state.mesh_area;
+  wGlobalLocal->pre_calc();
+  m_state.energy = wGlobalLocal->compute_energy(m_state.V, m_state.F, m_state.V_o)/m_state.mesh_area;
 }
 
 void Slim::solve(int iter_num) {
@@ -37,12 +37,12 @@ void Slim::solve(int iter_num) {
 }
 
 void Slim::slim_iter() {
-  LinesearchParametrizer linesearchParam(m_state);
+  Linesearch linesearch(m_state);
   Eigen::MatrixXd dest_res;
   dest_res = m_state.V_o;
-  WArap_p->parametrize(m_state.V,m_state.F, m_state.b,m_state.bc, dest_res);
+  wGlobalLocal->compute_map(m_state.V,m_state.F, m_state.b,m_state.bc, dest_res);
 
   double old_energy = m_state.energy;
 
-  m_state.energy = linesearchParam.parametrize(m_state.V,m_state.F, m_state.V_o, dest_res, WArap_p, m_state.energy*m_state.mesh_area)/m_state.mesh_area;
+  m_state.energy = linesearch.compute(m_state.V,m_state.F, m_state.V_o, dest_res, wGlobalLocal, m_state.energy*m_state.mesh_area)/m_state.mesh_area;
 }

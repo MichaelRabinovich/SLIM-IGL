@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "LocalWeightedArapParametrizer.h"
+#include "WeightedGlobalLocal.h"
 
 #include <igl/jet.h>
 #include <igl/readOBJ.h>
@@ -26,7 +26,7 @@ private:
 
   void slim_iter();
 
-  LocalWeightedArapParametrizer* WArap_p;
+  WeightedGlobalLocal* wGlobalLocal;
   SLIMData& m_state;
 };
 

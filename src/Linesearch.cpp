@@ -1,14 +1,14 @@
-#include "LinesearchParametrizer.h"
+#include "Linesearch.h"
 
 #include "geometric_utils.h"
 
 #include "igl/avg_edge_length.h"
 
-LinesearchParametrizer::LinesearchParametrizer (SLIMData& param_state) : m_state(param_state) {
+Linesearch::Linesearch (SLIMData& param_state) : m_state(param_state) {
   // empty
 }
 
-double LinesearchParametrizer::parametrize( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
+double Linesearch::compute( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
     Eigen::MatrixXd& uv, Eigen::MatrixXd& dst_uv, Energy* energy, double cur_energy) {
 
     Eigen::MatrixXd d = dst_uv - uv;
@@ -19,7 +19,7 @@ double LinesearchParametrizer::parametrize( const Eigen::MatrixXd& V, const Eige
     return line_search(V,F,uv,d,max_step_size, energy, cur_energy);
 }
 
-double LinesearchParametrizer::line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
+double Linesearch::line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
                               Eigen::MatrixXd& uv, const Eigen::MatrixXd& d, 
                               double step_size, Energy* energy, double cur_energy) {
   double old_energy;
@@ -46,7 +46,7 @@ double LinesearchParametrizer::line_search(const Eigen::MatrixXd& V, const Eigen
   return new_energy;
 }
 
- double LinesearchParametrizer::compute_max_step_from_singularities(const Eigen::MatrixXd& uv,
+ double Linesearch::compute_max_step_from_singularities(const Eigen::MatrixXd& uv,
                                             const Eigen::MatrixXi& F,
                                             Eigen::MatrixXd& d) {
     double max_step = INFINITY;
@@ -66,7 +66,7 @@ double LinesearchParametrizer::line_search(const Eigen::MatrixXd& V, const Eigen
     return max_step;
  }
 
- double LinesearchParametrizer::get_min_pos_root_2D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
+ double Linesearch::get_min_pos_root_2D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
             Eigen::MatrixXd& d, int f) {
 /*
       Finding the smallest timestep t s.t a triangle get degenerated (<=> det = 0)
@@ -129,7 +129,7 @@ double LinesearchParametrizer::line_search(const Eigen::MatrixXd& V, const Eigen
   return get_smallest_pos_quad_zero(a,b,c);
 }
 
-double LinesearchParametrizer::get_smallest_pos_quad_zero(double a,double b, double c) {
+double Linesearch::get_smallest_pos_quad_zero(double a,double b, double c) {
   double t1,t2;
   if (a != 0) {
     double delta_in = pow(b,2) - 4*a*c;
@@ -162,7 +162,7 @@ double LinesearchParametrizer::get_smallest_pos_quad_zero(double a,double b, dou
   }
 }
 
-double LinesearchParametrizer::get_min_pos_root_3D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
+double Linesearch::get_min_pos_root_3D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
             Eigen::MatrixXd& direc, int f) {
   /*
       Searching for the roots of:
@@ -255,7 +255,7 @@ const double eps=1e-14;
 //         2 real roots: x[0], x[1],          return 2
 //         1 real root : x[0], x[1] ± i*x[2], return 1
 // http://math.ivanovo.ac.ru/dalgebra/Khashin/poly/index.html
-int LinesearchParametrizer::SolveP3(std::vector<double>& x,double a,double b,double c) { // solve cubic equation x^3 + a*x^2 + b*x + c
+int Linesearch::SolveP3(std::vector<double>& x,double a,double b,double c) { // solve cubic equation x^3 + a*x^2 + b*x + c
   double a2 = a*a;
     double q  = (a2 - 3*b)/9; 
   double r  = (a*(2*a2-9*b) + 27*c)/54;

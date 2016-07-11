@@ -7,7 +7,6 @@
 #include <set>
 #include <vector>
 
-#include "AlgorithmStage.h"
 #include "Energy.h"
 #include "FastLsBuildUtils.h"
 #include "SLIMData.h"
@@ -15,23 +14,23 @@
 
 #include "igl/arap.h"
 
-class LocalWeightedArapParametrizer : public Energy {
+class WeightedGlobalLocal : public Energy {
 
 public:
-  LocalWeightedArapParametrizer(SLIMData& state, bool remeshing = false);
+  WeightedGlobalLocal(SLIMData& state, bool remeshing = false);
 
-  void parametrize( const Eigen::MatrixXd& V,
+  void compute_map( const Eigen::MatrixXd& V,
     const Eigen::MatrixXi& F,
     Eigen::VectorXi& soft_b,
     Eigen::MatrixXd& soft_bc,
-    Eigen::MatrixXd& uv);
+    Eigen::MatrixXd& V_o);
 
   virtual double compute_energy(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
-                 Eigen::MatrixXd& uv);
+                 Eigen::MatrixXd& V_o);
 
   void pre_calc();
 
-  void compute_jacobians(const Eigen::MatrixXd& uv);
+  void compute_jacobians(const Eigen::MatrixXd& V_o);
 
   Eigen::MatrixXd Ri,Ji;
   Eigen::VectorXd W_11; Eigen::VectorXd W_12; Eigen::VectorXd W_21; Eigen::VectorXd W_22;
@@ -42,7 +41,7 @@ private:
       Eigen::MatrixXd& bc);
 
   void get_At_AtMA_fast();
-
+  void add_soft_constraints();
   void add_proximal_penalty();
 
   double compute_energy_with_jacobians(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, 
