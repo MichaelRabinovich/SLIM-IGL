@@ -22,10 +22,6 @@
 #include <igl/covariance_scatter_matrix.h>
 #include <igl/edge_lengths.h>
 
-#undef NDEBUG
-#include <assert.h>
-#define NDEBUG
-
 void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
                                      const Eigen::MatrixXd& F1, const Eigen::MatrixXd& F2,
                                      Eigen::SparseMatrix<double>& D1, Eigen::SparseMatrix<double>& D2) {

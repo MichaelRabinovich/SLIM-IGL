@@ -15,10 +15,6 @@
 #include <igl/vector_area_matrix.h>
 #include <iostream>
 
-#undef NDEBUG
-#include <assert.h>
-#define NDEBUG
-
 using namespace std;
 
 Slim::Slim(SLIMData& m_state) : 

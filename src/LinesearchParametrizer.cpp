@@ -4,10 +4,6 @@
 
 #include "igl/avg_edge_length.h"
 
-#undef NDEBUG
-#include <assert.h>
-#define NDEBUG
-
 LinesearchParametrizer::LinesearchParametrizer (SLIMData& param_state) : m_state(param_state) {
   // empty
 }
