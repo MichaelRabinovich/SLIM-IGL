@@ -188,3 +188,126 @@ int get_euler_char(const Eigen::MatrixXd& V,
   int euler_char = euler_v - euler_e + euler_f;
   return euler_char;
 }
+
+void get_flips(const Eigen::MatrixXd& V,
+               const Eigen::MatrixXi& F,
+               const Eigen::MatrixXd& uv,
+               std::vector<int>& flip_idx) {
+  flip_idx.resize(0);
+  for (int i = 0; i < F.rows(); i++) {
+
+    Eigen::Vector2d v1_n = uv.row(F(i,0)); Eigen::Vector2d v2_n = uv.row(F(i,1)); Eigen::Vector2d v3_n = uv.row(F(i,2));
+
+    Eigen::MatrixXd T2_Homo(3,3);
+    T2_Homo.col(0) << v1_n(0),v1_n(1),1;
+    T2_Homo.col(1) << v2_n(0),v2_n(1),1;
+    T2_Homo.col(2) << v3_n(0),v3_n(1),1;
+    double det = T2_Homo.determinant();
+    assert (det == det);
+    if (det < 0) {
+      //cout << "flip at face #" << i << " det = " << T2_Homo.determinant() << endl;
+      flip_idx.push_back(i);
+    }
+  }
+}
+int count_flips(const Eigen::MatrixXd& V,
+              const Eigen::MatrixXi& F,
+              const Eigen::MatrixXd& uv) {
+
+  std::vector<int> flip_idx;
+  get_flips(V,F,uv,flip_idx);
+
+  
+  return flip_idx.size();
+}
+
+void dirichlet_on_circle(const Eigen::MatrixXd& V,
+              const Eigen::MatrixXi& F,
+              Eigen::MatrixXd& uv) {
+       using namespace Eigen;
+      typedef Matrix<double,Dynamic,1> VectorXS;
+      
+      // init (dirichlet)
+      Eigen::VectorXi b;
+      igl::boundary_loop(F,b);
+      Eigen::MatrixXd bc;
+      map_vertices_to_circle_area_normalized(V,F,b,bc);
+      
+      //igl::harmonic(V,F,bnd,bnd_uv,1,uv);
+
+      SparseMatrix<double> L,M,Mi;
+      igl::cotmatrix(V,F,L);
+      SparseMatrix<double> Q = -L;
+      uv.resize(V.rows(),bc.cols());
+
+      #ifndef USE_PARDISO
+
+      // Slow version (without Pardiso)
+      const VectorXS B = VectorXS::Zero(V.rows(),1);
+      igl::min_quad_with_fixed_data<double> data;
+      igl::min_quad_with_fixed_precompute(Q,b,SparseMatrix<double>(),true,data);
+      
+      for(int w = 0;w<bc.cols();w++) {
+        const VectorXS bcw = bc.col(w);
+        VectorXS Ww;
+        if(!igl::min_quad_with_fixed_solve(data,B,bcw,VectorXS(),Ww)) return;
+        uv.col(w) = Ww;
+      }
+
+      #else
+      
+      int n = Q.rows(); int knowns = b.rows(); int unknowns = n-b.rows();
+      std::vector<bool> unknown_mask;
+      unknown_mask.resize(n,true);
+      Eigen::VectorXi unknown(unknowns);
+      for(int i = 0;i<knowns;i++) {
+        unknown_mask[b(i)] = false;
+      }
+      int u = 0;
+      for(int i = 0;i<n;i++) {
+        if(unknown_mask[i]) {
+          unknown(u) = i;
+          u++;
+        }
+      }
+      SparseMatrix<double> Quu; igl::slice(Q,unknown,unknown,Quu);
+      SparseMatrix<double> Qub; igl::slice(Q,unknown,b,Qub);
+
+
+      int nnz = Quu.nonZeros();
+      std::vector<int> ii; std::vector<int> jj; std::vector<double> kk; ii.reserve(nnz); jj.reserve(nnz); kk.reserve(nnz);
+      for (int k=0; k<Quu.outerSize(); ++k) {
+          for (Eigen::SparseMatrix<double>::InnerIterator it(Quu,k); it; ++it) {
+            if (it.row() <= it.col()) {
+              ii.push_back(it.row()); jj.push_back(it.col()); kk.push_back(it.value());
+            }
+          }
+      }
+    
+      Eigen::VectorXi ai,ji; Eigen::VectorXd a;
+      PardisoSolver solver(ai,ji,a);
+      solver.set_type(2);
+
+      solver.set_pattern(ii,jj,kk);
+      solver.analyze_pattern();
+      solver.factorize();
+  
+      for(int w = 0;w<bc.cols();w++) {
+        const VectorXS bcw = bc.col(w); VectorXS rhs = -Qub*bcw;
+        VectorXS Ww;
+        solver.solve(rhs,Ww);
+        //uv.col(w) = Ww;
+        int known_idx = 0; int unknown_idx = 0;
+        for (int i = 0; i < n; i++) {
+          if (unknown_mask[i]) {
+            uv(i,w) = Ww(unknown_idx);
+            unknown_idx++;
+          }
+        }
+        for (int i = 0; i < b.rows(); i++) {
+          uv(b(i),w) = bcw(i);
+        }
+        //cout << "known_idx = " << known_idx << " unknown_idx = " << unknown_idx << endl;
+      }
+      #endif
+}

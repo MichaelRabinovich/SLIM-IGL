@@ -20,6 +20,10 @@ void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::Matr
                                      const Eigen::MatrixXd& F1, const Eigen::MatrixXd& F2,
                                      Eigen::SparseMatrix<double>& D1, Eigen::SparseMatrix<double>& D2);
 
+void dirichlet_on_circle(const Eigen::MatrixXd& V,
+              const Eigen::MatrixXi& F,
+              Eigen::MatrixXd& uv);
+
 bool tutte_on_circle(const Eigen::MatrixXd& V,
               const Eigen::MatrixXi& F,
               Eigen::MatrixXd& uv);
@@ -32,5 +36,15 @@ void map_vertices_to_circle_area_normalized(
 
 int get_euler_char(const Eigen::MatrixXd& V,
               const Eigen::MatrixXi& F);
+
+
+void get_flips(const Eigen::MatrixXd& V,
+               const Eigen::MatrixXi& F,
+               const Eigen::MatrixXd& uv,
+               std::vector<int>& flip_idx);
+
+int count_flips(const Eigen::MatrixXd& V,
+              const Eigen::MatrixXi& F,
+              const Eigen::MatrixXd& uv);
 
 #endif // geometric_utils_H

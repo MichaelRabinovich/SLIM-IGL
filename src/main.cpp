@@ -42,8 +42,11 @@ int main(int argc, char *argv[]) {
   cout << "\tMesh is valid!" << endl;
 
   sData.global_local_energy = SLIMData::SYMMETRIC_DIRICHLET;
-
-  tutte_on_circle(sData.V,sData.F,sData.V_o);
+  
+  dirichlet_on_circle(sData.V,sData.F,sData.V_o);
+  if (count_flips(sData.V,sData.F,sData.V_o) > 0) {
+      tutte_on_circle(sData.V,sData.F,sData.V_o);
+  }
   
   cout << "initialized parametrization" << endl;
   Slim slim(sData);
