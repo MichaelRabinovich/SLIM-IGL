@@ -138,53 +138,27 @@ void WeightedGlobalLocal::solve_weighted_arap(const Eigen::MatrixXd& V, const Ei
         Eigen::MatrixXd& uv, Eigen::VectorXi& soft_b_p, Eigen::MatrixXd& soft_bc_p) {
   using namespace Eigen;
 
-  /*b = [W11*R11 + W12*R21;
-         W11*R12 + W12*R22;
-         W21*R11 + W22*R21;
-         W21*R12 + W22*R22];*/
-  double h = m_state.proximal_p;
+  Eigen::SparseMatrix<double> L;
+  build_linear_system(L);
 
-  get_At_AtMA_fast();
-  
-  // move to zero based
-  for (int i = 0; i < aj.rows(); i++) {
-    aj(i)--;
-  }
-  for (int i = 0; i < ai.rows(); i++) {
-    ai(i)--;
-  }
-
+  // solve
   igl::min_quad_with_fixed_data<double> solver_data;
-  int nnz = aj.rows();
-  SparseMatrix<double,RowMajor> mat = MappedSparseMatrix<double,Eigen::RowMajor>(2*v_n, 2*v_n, nnz, ai.data(), aj.data(), K.data());
-  Eigen::SparseMatrix<double> Q(2*v_n,2*v_n);
-  Q = mat.selfadjointView<Eigen::Upper>();
-
   bool ret_x = min_quad_with_fixed_precompute(
-    Q,Eigen::VectorXi(),Eigen::SparseMatrix<double>(),false,solver_data);
+    L,Eigen::VectorXi(),Eigen::SparseMatrix<double>(),false,solver_data);
   Eigen::VectorXd Uc,Beq;
-  Eigen::VectorXd negRhs = -rhs;
+  Eigen::VectorXd neg_rhs = -1*rhs; //libigl solver expects a minus
   igl::min_quad_with_fixed_solve(
           solver_data,
-          negRhs,Eigen::VectorXd(),Beq,
+          neg_rhs,Eigen::VectorXd(),Beq,
           Uc);
 
-  uv.col(0) = Uc.block(0,0,v_n,1);
-  uv.col(1) = Uc.block(v_n,0,v_n,1);
-
-  // back to 1-based for Pardiso
-  for (int i = 0; i < aj.rows(); i++) {
-    aj(i)++;
-  }
-  for (int i = 0; i < ai.rows(); i++) {
-    ai(i)++;
-  }
-  
+  uv.col(0) = Uc.block(0,0,m_state.v_num,1);
+  uv.col(1) = Uc.block(m_state.v_num,0,m_state.v_num,1);
 }
 
 void WeightedGlobalLocal::pre_calc() {
   if (!has_pre_calc) {
-    f_n = m_state.F.rows(); v_n = m_state.V.rows();
+    int f_n = m_state.f_num;
     W_11.resize(f_n); W_12.resize(f_n); W_21.resize(f_n); W_22.resize(f_n);
     Ri.resize(f_n, 4); Ji.resize(f_n, 4);
     Eigen::MatrixXd F1,F2,F3;
@@ -192,105 +166,96 @@ void WeightedGlobalLocal::pre_calc() {
     igl::local_basis(m_state.V,m_state.F,F1,F2,F3);
     compute_surface_gradient_matrix(m_state.V,m_state.F,F1,F2,Dx,Dy);
 
+    rhs.resize(2*m_state.v_num);
+
     first_solve = true;
-    
-    build_dx_k_maps(v_n, m_state.F, ai,aj, inst1, inst2, inst4, inst1_idx,inst2_idx,inst4_idx);
-    
-
-    K.resize(aj.rows());
-    Eigen::VectorXi ai_t; Eigen::VectorXi aj_t;
-    dx_to_csr(Dx, dxi, dxj, a_x); dx_to_csr(Dy, ai_t, aj_t, a_y);
-
-    int ax_size = a_x.rows();
-    w11Dx.resize(ax_size); w12Dx.resize(ax_size); w11Dy.resize(ax_size); w12Dy.resize(ax_size);
-    w21Dx.resize(ax_size); w22Dx.resize(ax_size); w21Dy.resize(ax_size); w22Dy.resize(ax_size);
-
-    rhs.resize(2*v_n);
-
     has_pre_calc = true;
   }
 }
 
-void WeightedGlobalLocal::get_At_AtMA_fast() {
+void WeightedGlobalLocal::build_linear_system(Eigen::SparseMatrix<double> &L) {
   using namespace Eigen;
+  int f_n = m_state.f_num; int v_n = m_state.v_num;
 
-  rhs.setZero();
-  int A_idx = 0;
-  for (int i = 0; i < f_n; i++) {
-    int nnz_in_line = dxi[i+1] - dxi[i];
-    for (int j = 0; j < nnz_in_line; j++) {
-      double f1_i = m_state.M(i) * (W_11(i) * Ri(i,0) + W_12(i)*Ri(i,1));
-      double f2_i = m_state.M(i) * (W_11(i) * Ri(i,2) + W_12(i)*Ri(i,3));
-      double f3_i = m_state.M(i) * (W_21(i) * Ri(i,0) + W_22(i)*Ri(i,1));
-      double f4_i = m_state.M(i) * (W_21(i) * Ri(i,2) + W_22(i)*Ri(i,3));
+  Eigen::SparseMatrix<double> A(4*f_n, 2*v_n);
+  std::vector<Triplet<double> > IJV;
+  IJV.reserve(4*(Dx.outerSize()+ Dy.outerSize()));
 
-      int dest_k = dxj[A_idx]-1;
-      rhs(dest_k) += a_x(A_idx) * W_11(i) * f1_i + a_y(A_idx) * W_11(i) * f2_i  + a_x(A_idx) * W_21(i) * f3_i + a_y(A_idx) * W_21(i) * f4_i;
-      rhs(dest_k+v_n) += a_x(A_idx) * W_21(i) * f1_i + a_y(A_idx) * W_21(i) * f2_i  + a_x(A_idx) * W_22(i) * f3_i + a_y(A_idx) * W_22(i) * f4_i;
+  /*A = [W11*Dx, W12*Dx;
+       W11*Dy, W12*Dy;
+       W21*Dx, W22*Dx;
+       W21*Dy, W22*Dy];*/
+  for (int k=0; k<Dx.outerSize(); ++k) {
+      for (SparseMatrix<double>::InnerIterator it(Dx,k); it; ++it) {
+        int dx_r = it.row();
+        int dx_c = it.col();
+        double val = it.value();
 
-      A_idx++;
+        IJV.push_back(Triplet<double>(dx_r,dx_c, val*W_11(dx_r)));
+        IJV.push_back(Triplet<double>(dx_r,v_n + dx_c, val*W_12(dx_r)));
+        
+        IJV.push_back(Triplet<double>(2*f_n+dx_r,dx_c, val*W_21(dx_r)));
+        IJV.push_back(Triplet<double>(2*f_n+dx_r,v_n + dx_c, val*W_22(dx_r)));
     }
   }
 
-  for (int i = 0; i < f_n; i++) {
-      W_11(i)*=sqrt(m_state.M(i));
-      W_12(i)*=sqrt(m_state.M(i));
-      W_21(i)*=sqrt(m_state.M(i));
-      W_22(i)*=sqrt(m_state.M(i));
-  }
+  for (int k=0; k<Dy.outerSize(); ++k) {
+    for (SparseMatrix<double>::InnerIterator it(Dy,k); it; ++it) {
+      int dy_r = it.row();
+      int dy_c = it.col();
+      double val = it.value();
 
-  multiply_dx_by_W(a_x, W_11, w11Dx); multiply_dx_by_W(a_x, W_12, w12Dx);
-  multiply_dx_by_W(a_y, W_11, w11Dy); multiply_dx_by_W(a_y, W_12, w12Dy);
-  multiply_dx_by_W(a_x, W_21, w21Dx); multiply_dx_by_W(a_x, W_22, w22Dx);
-  multiply_dx_by_W(a_y, W_21, w21Dy); multiply_dx_by_W(a_y, W_22, w22Dy);
+      IJV.push_back(Triplet<double>(f_n+dy_r,dy_c, val*W_11(dy_r)));
+      IJV.push_back(Triplet<double>(f_n+dy_r,v_n + dy_c, val*W_12(dy_r)));
+      
+      IJV.push_back(Triplet<double>(3*f_n+dy_r,dy_c, val*W_21(dy_r)));
+      IJV.push_back(Triplet<double>(3*f_n+dy_r,v_n + dy_c, val*W_22(dy_r)));
+    }
+  }
+  A.setFromTriplets(IJV.begin(),IJV.end());
+
+  Eigen::SparseMatrix<double> At = A.transpose();
+  At.makeCompressed();
   
-  K.setZero();
-
-  // K1
-  add_dx_mult_dx_to_K(w11Dx,w11Dx, K, inst1,inst1_idx); add_dx_mult_dx_to_K(w11Dy,w11Dy, K, inst1,inst1_idx); 
-  add_dx_mult_dx_to_K(w21Dx,w21Dx, K, inst1,inst1_idx); add_dx_mult_dx_to_K(w21Dy,w21Dy, K, inst1,inst1_idx);
-
-  // K2
-  add_dx_mult_dx_to_K(w11Dx,w12Dx, K, inst2,inst2_idx); add_dx_mult_dx_to_K(w11Dy,w12Dy, K, inst2,inst2_idx); 
-  add_dx_mult_dx_to_K(w21Dx,w22Dx, K, inst2,inst2_idx); add_dx_mult_dx_to_K(w21Dy,w22Dy, K, inst2,inst2_idx);
-
-  // K4
-  add_dx_mult_dx_to_K(w12Dx,w12Dx, K, inst4,inst4_idx); add_dx_mult_dx_to_K(w12Dy,w12Dy, K, inst4,inst4_idx); 
-  add_dx_mult_dx_to_K(w22Dx,w22Dx, K, inst4,inst4_idx); add_dx_mult_dx_to_K(w22Dy,w22Dy, K, inst4,inst4_idx);
-
-  add_proximal_penalty();
-  add_soft_constraints();
-}
-
-void WeightedGlobalLocal::add_proximal_penalty() {
-  double h = m_state.proximal_p; 
-    // add proximal penalty
-    for (int i = 0; i < v_n; i++) {
-      rhs(i) += h * m_state.V_o(i,0);
-      rhs(v_n + i) += h * m_state.V_o(i,1);
-    }
-  int k_idx = 0;
-  for (int i = 0; i < ai.rows()-1; i++) {
-    int nnz = ai[i+1] - ai[i];
-    for (int j = 0; j < nnz; j++) {
-      int col = aj[k_idx];
-      if ((i+1)==col) {
-        K[k_idx] += h;
-      }
-      k_idx++;
-    }
+  //cout << "Assembled At: " << m_state->timer.getElapsedTime() << endl;
+  Eigen::VectorXd M4(4*f_n);
+  for (int i = 0; i < f_n; i++) {
+    M4(i) = M4(i+f_n) = M4(i+2*f_n) = M4(i+3*f_n) = m_state.M(i);
   }
+  //cout << "Calculated AtA: " << m_state->timer.getElapsedTime() << endl;
+
+  Eigen::SparseMatrix<double> id_m(At.rows(),At.rows()); id_m.setIdentity();
+
+  // add proximal penalty
+  L = At*M4.asDiagonal()*A + m_state.proximal_p * id_m; //add also a proximal term
+  L.makeCompressed();
+
+  // build rhs
+  /*rhs = [W11*R11 + W12*R21;
+         W11*R12 + W12*R22;
+         W21*R11 + W22*R21;
+         W21*R12 + W22*R22];*/
+  VectorXd f_rhs(4*f_n); f_rhs.setZero();
+  for (int i = 0; i < f_n; i++) {
+    f_rhs(i+0*f_n) = W_11(i) * Ri(i,0) + W_12(i)*Ri(i,1);
+    f_rhs(i+1*f_n) = W_11(i) * Ri(i,2) + W_12(i)*Ri(i,3);
+    f_rhs(i+2*f_n) = W_21(i) * Ri(i,0) + W_22(i)*Ri(i,1);
+    f_rhs(i+3*f_n) = W_21(i) * Ri(i,2) + W_22(i)*Ri(i,3);
+  }
+  VectorXd uv_flat = igl::cat<VectorXd>(1, m_state.V_o.col(0), m_state.V_o.col(1));
+  rhs = (At*M4.asDiagonal()*f_rhs + m_state.proximal_p * uv_flat);
+  add_soft_constraints(L); //TODO: support me
 }
 
-void WeightedGlobalLocal::add_soft_constraints() {
-  // update rhs
+void WeightedGlobalLocal::add_soft_constraints(Eigen::SparseMatrix<double> &L) {
+  int v_n = m_state.v_num;
   for (int i = 0; i < m_state.b.rows(); i++) {
     int v_idx = m_state.b(i);
     rhs(v_idx) += m_state.soft_const_p * m_state.bc(i,0);
     rhs(v_n + v_idx) += m_state.soft_const_p * m_state.bc(i,1);
 
-    K(ai(v_idx)-1) += m_state.soft_const_p;
-    K(ai(v_n+v_idx)-1) += m_state.soft_const_p;
+    L.coeffRef(v_idx, v_idx) += m_state.soft_const_p;
+    L.coeffRef(2*v_idx, 2*v_idx) += m_state.soft_const_p;
   }
 }
 

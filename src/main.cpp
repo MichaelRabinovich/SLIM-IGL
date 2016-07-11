@@ -23,7 +23,7 @@ void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::Vector
 Eigen::MatrixXd V;
 Eigen::MatrixXi F;
 
-const int ITER_NUM = 7;
+const int ITER_NUM = 5;
 
 int main(int argc, char *argv[]) {
   if (argc < 3) {

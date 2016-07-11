@@ -1,5 +1,5 @@
-#ifndef geometric_utils_H
-#define geometric_utils_H
+#ifndef GEOMETRIC_UTILS_H
+#define GEOMETRIC_UTILS_H
 
 #include "igl/igl_inline.h"
 #ifdef HAS_GUI
@@ -47,4 +47,4 @@ void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::Matr
                                      const Eigen::MatrixXd& F1, const Eigen::MatrixXd& F2,
                                      Eigen::SparseMatrix<double>& D1, Eigen::SparseMatrix<double>& D2);
 
-#endif // geometric_utils_H
+#endif // GEOMETRIC_UTILS_H

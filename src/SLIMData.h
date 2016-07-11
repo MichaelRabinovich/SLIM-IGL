@@ -23,12 +23,11 @@ public:
   Eigen::MatrixXd V;
   Eigen::MatrixXi F;
   Eigen::VectorXd M;
-  Eigen::MatrixXd V_o; // result vertices
+  Eigen::MatrixXd V_o; // output vertices
 
   int v_num;
   int f_num;
 
-  // result measurements
   double energy;
 
   enum SLIM_ENERGY {
@@ -50,6 +49,7 @@ public:
   double proximal_p;
   double exp_factor; // used for exponential energies, ignored otherwise
 
+  // INTERNAL
   double mesh_area;
   double avg_edge_length;
 };
