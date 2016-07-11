@@ -65,8 +65,7 @@ void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::Vector
 
   Eigen::MatrixXi C, Ci;
   igl::components(A, C, Ci);
-  //cout << "#Connected_Components = " << Ci.rows() << endl;
-  //cout << "is edge manifold = " << igl::is_edge_manifold(V,F) << endl;
+  
   int connected_components = Ci.rows();
   if (connected_components!=1) {
     cout << "Error! Input has multiple connected components" << endl; exit(1);
