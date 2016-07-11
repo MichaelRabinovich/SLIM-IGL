@@ -48,7 +48,6 @@ double LinesearchParametrizer::line_search(const Eigen::MatrixXd& V, const Eigen
     }
     cur_iter++;
   }
-  //cout << "new energy = " << new_energy << endl;
   return new_energy;
 }
 
@@ -75,7 +74,10 @@ double LinesearchParametrizer::line_search(const Eigen::MatrixXd& V, const Eigen
  double LinesearchParametrizer::get_min_pos_root_2D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
             Eigen::MatrixXd& d, int f) {
 /*
-      Symbolic matlab for equation 4 at the paper (this is how to recreate the formulas below)
+      Finding the smallest timestep t s.t a triangle get degenerated (<=> det = 0)
+      The following code can be derived by a symbolic expression in matlab:
+      
+      Symbolic matlab:
       U11 = sym('U11');
       U12 = sym('U12');
       U21 = sym('U21');
@@ -151,7 +153,7 @@ double LinesearchParametrizer::get_smallest_pos_quad_zero(double a,double b, dou
   double tmp_n = min(t1,t2);
   t1 = max(t1,t2); t2 = tmp_n;
   if (t1 == t2) {
-    return INFINITY; // means the orientation flips twice = doesn't flip?
+    return INFINITY; // means the orientation flips twice = doesn't flip
   }
   // return the smallest negative root if it exists, otherwise return infinity
   if (t1 > 0) {
@@ -168,6 +170,7 @@ double LinesearchParametrizer::get_smallest_pos_quad_zero(double a,double b, dou
 double LinesearchParametrizer::get_min_pos_root_3D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
             Eigen::MatrixXd& direc, int f) {
   /*
+      Searching for the roots of:
         +-1/6 * |ax ay az 1|
                 |bx by bz 1|
                 |cx cy cz 1|
@@ -178,7 +181,7 @@ double LinesearchParametrizer::get_min_pos_root_3D(const Eigen::MatrixXd& uv,con
         syms b_x b_y b_z b_dx b_dy b_dz
         syms c_x c_y c_z c_dx c_dy c_dz
         syms d_x d_y d_z d_dx d_dy d_dz
-        syms t % Timestep var, this is what were looking for
+        syms t % Timestep var, this is what we're looking for
 
 
         a_plus_t = [a_x,a_y,a_z] + t*[a_dx,a_dy,a_dz];

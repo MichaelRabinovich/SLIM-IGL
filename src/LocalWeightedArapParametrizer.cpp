@@ -148,7 +148,7 @@ void LocalWeightedArapParametrizer::update_weights_and_closest_rotations(const E
     W_21(i) = mat_W(1,0);
     W_22(i) = mat_W(1,1);
 
-    // 2) Update closest rotations (not rotations in case of conformal energy)
+    // 2) Update local step (doesn't have to be a rotation, for instance in case of conformal energy)
     Ri(i,0) = ri(0,0); Ri(i,1) = ri(1,0); Ri(i,2) = ri(0,1); Ri(i,3) = ri(1,1);
    }
 }
