@@ -16,10 +16,6 @@
 
 using namespace std;
 
-void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
-                                     const Eigen::MatrixXd& F1, const Eigen::MatrixXd& F2,
-                                     Eigen::SparseMatrix<double>& D1, Eigen::SparseMatrix<double>& D2);
-
 void dirichlet_on_circle(const Eigen::MatrixXd& V,
               const Eigen::MatrixXi& F,
               Eigen::MatrixXd& uv);
@@ -46,5 +42,9 @@ void get_flips(const Eigen::MatrixXd& V,
 int count_flips(const Eigen::MatrixXd& V,
               const Eigen::MatrixXi& F,
               const Eigen::MatrixXd& uv);
+
+void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
+                                     const Eigen::MatrixXd& F1, const Eigen::MatrixXd& F2,
+                                     Eigen::SparseMatrix<double>& D1, Eigen::SparseMatrix<double>& D2);
 
 #endif // geometric_utils_H

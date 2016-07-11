@@ -22,60 +22,6 @@
 #include <igl/covariance_scatter_matrix.h>
 #include <igl/edge_lengths.h>
 
-void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
-                                     const Eigen::MatrixXd& F1, const Eigen::MatrixXd& F2,
-                                     Eigen::SparseMatrix<double>& D1, Eigen::SparseMatrix<double>& D2) {
-  using namespace Eigen;
-  Eigen::SparseMatrix<double> G;
-  //igl::grad(V,F,G);
-
-
-  // Get grad
-  const int fn = F.rows();  const int vn = V.rows();
-  Eigen::MatrixXd grad3_3f(3, 3*fn);
-  Eigen::MatrixXd fN; igl::per_face_normals(V,F,fN);
-  Eigen::VectorXd Ar; igl::doublearea(V,F, Ar);
-  for (int i = 0; i < fn; i++) {
-     // renaming indices of vertices of triangles for convenience
-    int i1 = F(i,0);
-    int i2 = F(i,1);
-    int i3 = F(i,2);
-
-    // #F x 3 matrices of triangle edge vectors, named after opposite vertices
-    Eigen::Matrix<double, 3,3> e;
-    e.col(0) = V.row(i2) - V.row(i1);
-    e.col(1) = V.row(i3) - V.row(i2);
-    e.col(2) = V.row(i1) - V.row(i3);;
-    
-    Eigen::Matrix<double, 3,1> Fni = fN.row(i);
-    double Ari = Ar(i);
-
-    //grad3_3f(:,[3*i,3*i-2,3*i-1])=[0,-Fni(3), Fni(2);Fni(3),0,-Fni(1);-Fni(2),Fni(1),0]*e/(2*Ari);
-    Eigen::Matrix<double, 3,3> n_M;
-    n_M << 0,-Fni(2),Fni(1),Fni(2),0,-Fni(0),-Fni(1),Fni(0),0;
-    Eigen::VectorXi R = igl::colon<int>(0,2);
-    Eigen::VectorXi C(3); C  << 3*i+2,3*i,3*i+1;
-    Eigen::MatrixXd res = (1./Ari)*(n_M*e);
-    igl::slice_into(res,R,C,grad3_3f);
-  }
-  std::vector<Triplet<double> > Gx_trip,Gy_trip,Gz_trip;
-  int val_idx = 0;
-  for (int i = 0; i < fn; i++) {
-    for (int j = 0; j < 3; j++) {
-      Gx_trip.push_back(Triplet<double>(i, F(i,j), grad3_3f(0, val_idx)));
-      Gy_trip.push_back(Triplet<double>(i, F(i,j), grad3_3f(1, val_idx)));
-      Gz_trip.push_back(Triplet<double>(i, F(i,j), grad3_3f(2, val_idx)));
-      val_idx++;
-    }
-  }
-  SparseMatrix<double> Dx(fn,vn);  Dx.setFromTriplets(Gx_trip.begin(), Gx_trip.end());
-  SparseMatrix<double> Dy(fn,vn);  Dy.setFromTriplets(Gy_trip.begin(), Gy_trip.end());
-  SparseMatrix<double> Dz(fn,vn);  Dz.setFromTriplets(Gz_trip.begin(), Gz_trip.end());
-
-  D1 = F1.col(0).asDiagonal()*Dx + F1.col(1).asDiagonal()*Dy + F1.col(2).asDiagonal()*Dz;
-  D2 = F2.col(0).asDiagonal()*Dx + F2.col(1).asDiagonal()*Dy + F2.col(2).asDiagonal()*Dz;
-}
-
 void map_vertices_to_circle_area_normalized(
   const Eigen::MatrixXd& V,
   const Eigen::MatrixXi& F,
@@ -86,7 +32,6 @@ void map_vertices_to_circle_area_normalized(
   igl::doublearea(V,F, dblArea_orig);
   double area = dblArea_orig.sum()/2;
   double radius = sqrt(area / (M_PI));
-  cout << "map_vertices_to_circle_area_normalized, area = " << area << " radius = " << radius << endl;
 
   // Get sorted list of boundary vertices
   std::vector<int> interior,map_ij;
@@ -201,7 +146,6 @@ void get_flips(const Eigen::MatrixXd& V,
     double det = T2_Homo.determinant();
     assert (det == det);
     if (det < 0) {
-      //cout << "flip at face #" << i << " det = " << T2_Homo.determinant() << endl;
       flip_idx.push_back(i);
     }
   }
@@ -246,4 +190,56 @@ void dirichlet_on_circle(const Eigen::MatrixXd& V,
     if(!igl::min_quad_with_fixed_solve(data,B,bcw,VectorXS(),Ww)) return;
     uv.col(w) = Ww;
   }
+}
+
+void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
+                                     const Eigen::MatrixXd& F1, const Eigen::MatrixXd& F2,
+                                     Eigen::SparseMatrix<double>& D1, Eigen::SparseMatrix<double>& D2) {
+  using namespace Eigen;
+  Eigen::SparseMatrix<double> G;
+
+  // Get grad
+  const int fn = F.rows();  const int vn = V.rows();
+  Eigen::MatrixXd grad3_3f(3, 3*fn);
+  Eigen::MatrixXd fN; igl::per_face_normals(V,F,fN);
+  Eigen::VectorXd Ar; igl::doublearea(V,F, Ar);
+  for (int i = 0; i < fn; i++) {
+     // renaming indices of vertices of triangles for convenience
+    int i1 = F(i,0);
+    int i2 = F(i,1);
+    int i3 = F(i,2);
+
+    // #F x 3 matrices of triangle edge vectors, named after opposite vertices
+    Eigen::Matrix<double, 3,3> e;
+    e.col(0) = V.row(i2) - V.row(i1);
+    e.col(1) = V.row(i3) - V.row(i2);
+    e.col(2) = V.row(i1) - V.row(i3);;
+    
+    Eigen::Matrix<double, 3,1> Fni = fN.row(i);
+    double Ari = Ar(i);
+
+    //grad3_3f(:,[3*i,3*i-2,3*i-1])=[0,-Fni(3), Fni(2);Fni(3),0,-Fni(1);-Fni(2),Fni(1),0]*e/(2*Ari);
+    Eigen::Matrix<double, 3,3> n_M;
+    n_M << 0,-Fni(2),Fni(1),Fni(2),0,-Fni(0),-Fni(1),Fni(0),0;
+    Eigen::VectorXi R = igl::colon<int>(0,2);
+    Eigen::VectorXi C(3); C  << 3*i+2,3*i,3*i+1;
+    Eigen::MatrixXd res = (1./Ari)*(n_M*e);
+    igl::slice_into(res,R,C,grad3_3f);
+  }
+  std::vector<Triplet<double> > Gx_trip,Gy_trip,Gz_trip;
+  int val_idx = 0;
+  for (int i = 0; i < fn; i++) {
+    for (int j = 0; j < 3; j++) {
+      Gx_trip.push_back(Triplet<double>(i, F(i,j), grad3_3f(0, val_idx)));
+      Gy_trip.push_back(Triplet<double>(i, F(i,j), grad3_3f(1, val_idx)));
+      Gz_trip.push_back(Triplet<double>(i, F(i,j), grad3_3f(2, val_idx)));
+      val_idx++;
+    }
+  }
+  SparseMatrix<double> Dx(fn,vn);  Dx.setFromTriplets(Gx_trip.begin(), Gx_trip.end());
+  SparseMatrix<double> Dy(fn,vn);  Dy.setFromTriplets(Gy_trip.begin(), Gy_trip.end());
+  SparseMatrix<double> Dz(fn,vn);  Dz.setFromTriplets(Gz_trip.begin(), Gz_trip.end());
+
+  D1 = F1.col(0).asDiagonal()*Dx + F1.col(1).asDiagonal()*Dy + F1.col(2).asDiagonal()*Dz;
+  D2 = F2.col(0).asDiagonal()*Dx + F2.col(1).asDiagonal()*Dy + F2.col(2).asDiagonal()*Dz;
 }
