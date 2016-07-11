@@ -8,9 +8,10 @@
 #include <utility>
 #include <vector>
 
-// TODO: we need one mapping from K(vi,vj) to the big one, to the index, and from there we could create instruction lists by vi, vj offsets
+/*
+	Utilities for efficiently building our matrix system, exploiting the constant sparsity pattern of it.
+*/
 
-//typedef Eigen::Tuple<int> inst;
 struct instruction {
 	int src1;
 	int src2;
@@ -25,14 +26,12 @@ typedef std::vector< instruction > instruction_list;
 typedef std::pair<int,int> fv_p;
 typedef std::pair<int,int> vv_p;
 
-//void add_dx_mult_dx_to_K(const Eigen::VectorXd& k1, const Eigen::VectorXd& k2, Eigen::VectorXd& K, const instruction_list& instructions);
 void add_dx_mult_dx_to_K(const Eigen::VectorXd& k1, const Eigen::VectorXd& k2, Eigen::VectorXd& K, const instruction_list& instructions,
 		const std::vector<int>& inst_idx);
 
 void multiply_dx_by_W(const Eigen::VectorXd& k1, const Eigen::VectorXd& face_W, Eigen::VectorXd& res);
 void multiply_dx_by_W_3d(const Eigen::VectorXd& k1, const Eigen::VectorXd& face_W, Eigen::VectorXd& res);
 
-// gets dx (i.e FXV matrix)
 void build_dx_k_maps(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi& ai, Eigen::VectorXi& aj,
 		instruction_list& instructions1, instruction_list& instructions2, instruction_list& instructions4,
 		std::vector<int>& inst1_idx, std::vector<int>& inst2_idx, std::vector<int>& inst4_idx);

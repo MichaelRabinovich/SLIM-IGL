@@ -52,8 +52,7 @@ private:
   Eigen::VectorXd w11Dx,w12Dx,w11Dy,w12Dy,w21Dx,w22Dx,w21Dy,w22Dy;
   Eigen::VectorXd rhs;
 
-
-  // Cached data for AtA and At matrix calculations
+  // Cached data for the matrix system calculations (the sparsity pattern is constant)
   Eigen::VectorXd a_x,a_y;
   Eigen::VectorXi dxi,dxj;
   Eigen::VectorXi ai,aj;

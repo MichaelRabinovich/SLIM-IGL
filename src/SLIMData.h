@@ -28,7 +28,6 @@ public:
   int v_num;
   int f_num;
 
-  // viewing params
   double mesh_area;
   double avg_edge_length;
 
@@ -46,12 +45,13 @@ public:
   };
   SLIM_ENERGY slim_energy;
 
-  // constraints (and or stiffness)
+  // soft constraints
   Eigen::VectorXi b;
   Eigen::MatrixXd bc;
-  double proximal_p;
   double soft_const_p;
-  double exp_factor;
+
+  double proximal_p;
+  double exp_factor; // used for exponential energies, ignored otherwise
 };
 
 #endif // SLIM_DATA_H

@@ -1,6 +1,5 @@
 #include "LinesearchParametrizer.h"
 
-#include "eigen_stl_utils.h"
 #include "geometric_utils.h"
 
 #include "igl/avg_edge_length.h"

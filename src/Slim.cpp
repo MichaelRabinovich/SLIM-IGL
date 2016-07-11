@@ -1,7 +1,6 @@
 #include "Slim.h"
 
 #include "SLIMData.h"
-#include "eigen_stl_utils.h"
 #include "geometric_utils.h"
 #include "LinesearchParametrizer.h"
 

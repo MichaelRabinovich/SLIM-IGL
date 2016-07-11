@@ -2,7 +2,6 @@
 
 #include "SLIMData.h"
 #include "Slim.h"
-#include "eigen_stl_utils.h"
 #include "geometric_utils.h"
 
 #include "igl/components.h"

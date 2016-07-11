@@ -1,7 +1,5 @@
 #include "LocalWeightedArapParametrizer.h"
 
-#include "eigen_stl_utils.h"
-
 #include "igl/arap.h"
 #include "igl/cat.h"
 #include "igl/doublearea.h"
@@ -16,7 +14,6 @@
 
 LocalWeightedArapParametrizer::LocalWeightedArapParametrizer(SLIMData& state, bool remeshing) : 
                                   m_state(state) {
-    // empty
 }
 
 void LocalWeightedArapParametrizer::parametrize( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
@@ -44,12 +41,10 @@ void LocalWeightedArapParametrizer::compute_jacobians(const Eigen::MatrixXd& uv)
     k_idx +=3;
   }
   
-  //cout << "Got jacobians: " << endl;
 }
 
 void LocalWeightedArapParametrizer::update_weights_and_closest_rotations(const Eigen::MatrixXd& V,
        const Eigen::MatrixXi& F, Eigen::MatrixXd& uv) {
-  //cout << "updating weights: " << endl;
   compute_jacobians(uv);
 
   const double eps = 1e-8;
@@ -213,16 +208,12 @@ void LocalWeightedArapParametrizer::pre_calc() {
     compute_surface_gradient_matrix(m_state.V,m_state.F,F1,F2,Dx,Dy);
 
     first_solve = true;
-
-    cout << "Building data structures" << endl;
-    //cout << "building dx k maps" << endl;
     
     build_dx_k_maps(v_n, m_state.F, ai,aj, inst1, inst2, inst4, inst1_idx,inst2_idx,inst4_idx);
-    //cout << "Built maps at: " << m_state.timer.getElapsedTime() << endl;
+    
 
     K.resize(aj.rows());
     Eigen::VectorXi ai_t; Eigen::VectorXi aj_t;
-    //cout << "Calling dx to csr: " << m_state.timer.getElapsedTime() << endl;
     dx_to_csr(Dx, dxi, dxj, a_x); dx_to_csr(Dy, ai_t, aj_t, a_y);
 
     int ax_size = a_x.rows();
@@ -237,8 +228,6 @@ void LocalWeightedArapParametrizer::pre_calc() {
 
 void LocalWeightedArapParametrizer::get_At_AtMA_fast() {
   using namespace Eigen;
-
-  //cout << "get_At_AtMA_fast " << m_state.timer.getElapsedTime() << endl;
 
   rhs.setZero();
   int A_idx = 0;
@@ -269,8 +258,6 @@ void LocalWeightedArapParametrizer::get_At_AtMA_fast() {
   multiply_dx_by_W(a_y, W_11, w11Dy); multiply_dx_by_W(a_y, W_12, w12Dy);
   multiply_dx_by_W(a_x, W_21, w21Dx); multiply_dx_by_W(a_x, W_22, w22Dx);
   multiply_dx_by_W(a_y, W_21, w21Dy); multiply_dx_by_W(a_y, W_22, w22Dy);
-
-  //cout << "Multiplied weights: " << m_state.timer.getElapsedTime() << endl;
   
   K.setZero();
 
@@ -286,10 +273,6 @@ void LocalWeightedArapParametrizer::get_At_AtMA_fast() {
   add_dx_mult_dx_to_K(w12Dx,w12Dx, K, inst4,inst4_idx); add_dx_mult_dx_to_K(w12Dy,w12Dy, K, inst4,inst4_idx); 
   add_dx_mult_dx_to_K(w22Dx,w22Dx, K, inst4,inst4_idx); add_dx_mult_dx_to_K(w22Dy,w22Dy, K, inst4,inst4_idx);
 
-  //cout << "Computed new K: " << m_state.timer.getElapsedTime() << endl;
-
-  //cout << "Added proximal penalty to K: " << m_state.timer.getElapsedTime() << endl;
-
   add_proximal_penalty();
 }
 
@@ -300,7 +283,6 @@ void LocalWeightedArapParametrizer::add_proximal_penalty() {
       rhs(i) += h * m_state.V_o(i,0);
       rhs(v_n + i) += h * m_state.V_o(i,1);
     }
-  //cout << "Computed rhs: " << m_state.timer.getElapsedTime() << endl;
   int k_idx = 0;
   for (int i = 0; i < ai.rows()-1; i++) {
     int nnz = ai[i+1] - ai[i];
