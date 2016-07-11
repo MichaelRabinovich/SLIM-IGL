@@ -41,7 +41,6 @@ void Slim::solve(int iter_num) {
 }
 
 void Slim::slim_iter() {
-  // weighted arap for riemannian metric
   LinesearchParametrizer linesearchParam(m_state);
   Eigen::MatrixXd dest_res;
   dest_res = m_state.V_o;
