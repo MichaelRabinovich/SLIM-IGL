@@ -5,39 +5,20 @@
 #include "igl/unique.h"
 #include "igl/vertex_triangle_adjacency.h"
 
-#include "tbb/tbb.h"
-
 using namespace std;
 
-class FastATA_Multiplier {
-    const Eigen::VectorXd& k1; const Eigen::VectorXd& k2; Eigen::VectorXd& K; const instruction_list& instructions;
-	const std::vector<int>& inst_idx;
-public:
-	
-    void operator()( const tbb::blocked_range<size_t>& r ) const {
-        for( size_t i=r.begin(); i!=r.end(); ++i ) {
-        	const int cur_idx = inst_idx[i]; const int next_idx = inst_idx[i+1];
-			double val = 0;
-			for (int j = 0; j < next_idx-cur_idx; j++) {
-				val += k1[instructions[cur_idx+j].src1] * k2[instructions[cur_idx+j].src2];
-			}
-			K[instructions[cur_idx].dst] += val;
-        }
-    }
-    FastATA_Multiplier( const Eigen::VectorXd& k1, const Eigen::VectorXd& k2, Eigen::VectorXd& K, const instruction_list& instructions,
-					const std::vector<int>& inst_idx ) :
-        k1(k1),k2(k2),K(K),instructions(instructions),inst_idx(inst_idx)
-    {}
-};
 
 void add_dx_mult_dx_to_K(const Eigen::VectorXd& k1, const Eigen::VectorXd& k2, Eigen::VectorXd& K, const instruction_list& instructions,
 		const std::vector<int>& inst_idx) {
 	
-	const int values_n = inst_idx.size() - 1;
-	
-	static tbb::affinity_partitioner ap;
-	parallel_for(tbb::blocked_range<size_t>(0,values_n), FastATA_Multiplier(k1,k2,K,instructions,inst_idx),
-		ap);
+	for( size_t i=0; i < inst_idx.size() - 1;i++) {
+		const int cur_idx = inst_idx[i]; const int next_idx = inst_idx[i+1];
+		double val = 0;
+		for (int j = 0; j < next_idx-cur_idx; j++) {
+			val += k1[instructions[cur_idx+j].src1] * k2[instructions[cur_idx+j].src2];
+		}
+		K[instructions[cur_idx].dst] += val;
+	}
 }
 
 void build_dx_k_maps(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi& ai, Eigen::VectorXi& aj,
