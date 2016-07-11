@@ -34,19 +34,17 @@ void build_dx_k_maps(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi& a
 
 	std::map<vv_p, int> vv_to_K;
 
-	cout << "Started: " << timer.getElapsedTime() << endl;
 	vector< vector<int> > V2V_tmp;
 	igl::adjacency_list(F,V2V_tmp, false/*sorted*/);
-	cout << "Built adjacency list: " << timer.getElapsedTime() << endl;
+
 	// extending V2V to 2Vx2V, adj(2Vx2V) = [adj[V],adj[V]+v_n; adj[V],adj[V]+v_n];
 	vector< vector<int> > V2V(V2V_tmp.size()*2);
 	for (int vi = 0; vi < v_n; vi++) {
 		V2V_tmp[vi].push_back(vi); // make sure we also have vi as a neighbour
 		int v_nbd_size = V2V_tmp[vi].size();
 		vector<int> nbs(v_nbd_size*2);
-		 //cout << " vi = " << vi << endl;
+		 
 		for (int j = 0; j < v_nbd_size; j++) {
-			//cout << "nb j = " << V2V_tmp[vi][j] << endl;
 			nbs[2*j] = V2V_tmp[vi][j];
 			nbs[2*j+1] = V2V_tmp[vi][j] + v_n;
 		}
@@ -54,7 +52,6 @@ void build_dx_k_maps(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi& a
 		V2V[vi] = V2V[vi + v_n] = nbs;
 	}
 
-	cout << "Built V2V: " << timer.getElapsedTime() << endl;
 	// build vv_to_K (but we now look at K as a 2Vx2V sparse matrix)
 	std::vector<int> ai_v,aj_v; ai_v.reserve(2*v_n); aj_v.reserve(12*v_n); ai_v.push_back(1);
 	int K_idx = 0;
@@ -63,7 +60,6 @@ void build_dx_k_maps(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi& a
 		for (int vj_i = 0; vj_i < nb_v_num; vj_i++) {
 			int vj = V2V[vi][vj_i];
 			if (vj >= vi) {
-				//cout << "vi = " << vi << " vj = " << vj << " K_idx = " << K_idx << endl;
 				vv_to_K[vv_p(vi,vj)] = K_idx;
 				aj_v.push_back(vj);
 				K_idx++;
@@ -71,7 +67,6 @@ void build_dx_k_maps(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi& a
 		}
 		ai_v.push_back(1+K_idx);
 	}
-	cout << "Built vv_to_K: " << timer.getElapsedTime() << endl;
 
 	int ai_size = ai_v.size(); int aj_size = aj_v.size();
 	
@@ -87,7 +82,6 @@ void build_dx_k_maps(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi& a
 	
 	vector< vector<int> > V2F; vector< vector<int> > V2Fi;
 	igl::vertex_triangle_adjacency(v_n, F, V2F, V2Fi);
-	cout << "Built V2F: " << timer.getElapsedTime() << endl;
 
 	instructions1.reserve(3*3*f_n); instructions2.reserve(3*3*f_n); instructions4.reserve(3*3*f_n);
 	for (int vi = 0; vi < v_n; vi++) {
@@ -112,28 +106,22 @@ void build_dx_k_maps(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi& a
 				// now we have both of the indexes k1,k2 we need to multiply, but we have 3 different possible K index destination
 				//	this is based on K1,K2,K4 indexes, so we add 3 instructions to the 3 lists (where K_mat = [K1,K2;K3,K4] is a symmetric matrix)
 				int inst2_dst_K = vv_to_K[vv_p(vi,v_n+vjf)];
-				//instructions2[fvi_k].push_back(instruction(fvj_k, inst2_dst_K));
 				instructions2.push_back({fvi_k,fvj_k, inst2_dst_K});
 
 				if (vi <= vjf) {
 					int inst1_dst_K = vv_to_K[vv_p(vi,vjf)];
 					instructions1.push_back({fvi_k,fvj_k, inst1_dst_K});
-					//instructions1[fvi_k].push_back(instruction(fvj_k, inst1_dst_K));
-					//cout << "vjf = " << vjf << " fvj_k = " << fvj_k << " inst1_dst_K = " << inst1_dst_K << endl;
 
 					int inst4_dst_K = vv_to_K[vv_p(v_n+vi,v_n+vjf)];
 					instructions4.push_back({fvi_k,fvj_k, inst4_dst_K});
-					//instructions4[fvi_k].push_back(instruction(fvj_k, inst3_dst_K));
 				}
 			}	
 		}
 		
 	}
-	cout << "Built basic instructions: " << timer.getElapsedTime() << endl;
 	std::sort(instructions1.begin(), instructions1.end());
 	std::sort(instructions2.begin(), instructions2.end());
 	std::sort(instructions4.begin(), instructions4.end());
-	cout << "Sorted instructions: " << timer.getElapsedTime() << endl;
 
 	// build the reference index
 	inst2_idx.reserve(aj_size/2); // should be of size (2K)/4 = 0.5*K (since all is in)
@@ -142,8 +130,6 @@ void build_dx_k_maps(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi& a
 	build_index_from_instructions(instructions1, inst1_idx);	
 	build_index_from_instructions(instructions2, inst2_idx);
 	build_index_from_instructions(instructions4, inst4_idx);
-
-	cout << "finished building instructions: " << timer.getElapsedTime() << endl;
 }
 
 void build_dx_k_maps_3d(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi& ai, Eigen::VectorXi& aj,
@@ -161,17 +147,15 @@ void build_dx_k_maps_3d(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi
 
 	std::map<vv_p, int> vv_to_K;
 
-	cout << "Started: " << timer.getElapsedTime() << endl;
 	vector< vector<int> > V2V_tmp;
 	tet_adjacency_list(F,V2V_tmp);
-	cout << "Built adjacency list: " << timer.getElapsedTime() << endl;
 	// extending V2V to 3Vx3V, adj(3Vx3V) = [adj[V],adj[V]+v_n,adj[V]+2*v_n; adj[V],adj[V]+v_n.adj[V]+2*v_n] (similar to the 2d function)
 	vector< vector<int> > V2V(V2V_tmp.size()*3);
 	for (int vi = 0; vi < v_n; vi++) {
 		V2V_tmp[vi].push_back(vi); // make sure we also have vi as a neighbour
 		int v_nbd_size = V2V_tmp[vi].size();
 		vector<int> nbs(v_nbd_size*3);
-		 //cout << " vi = " << vi << endl;
+
 		for (int j = 0; j < v_nbd_size; j++) {
 			nbs[3*j] = V2V_tmp[vi][j];
 			nbs[3*j+1] = V2V_tmp[vi][j] + v_n;
@@ -181,7 +165,6 @@ void build_dx_k_maps_3d(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi
 		V2V[vi] = V2V[vi + v_n] = V2V[vi + 2*v_n] = nbs;
 	}
 
-	cout << "Built V2V: " << timer.getElapsedTime() << endl;
 	// build vv_to_K (but we now look at K as a 2Vx2V sparse matrix)
 	std::vector<int> ai_v,aj_v; ai_v.reserve(3*v_n); aj_v.reserve(18*v_n); ai_v.push_back(1);
 	int K_idx = 0;
@@ -197,7 +180,6 @@ void build_dx_k_maps_3d(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi
 		}
 		ai_v.push_back(1+K_idx);
 	}
-	cout << "Built vv_to_K: " << timer.getElapsedTime() << endl;
 
 	int ai_size = ai_v.size(); int aj_size = aj_v.size();
 	
@@ -213,7 +195,6 @@ void build_dx_k_maps_3d(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi
 	
 	vector< vector<int> > V2F; vector< vector<int> > V2Fi;
 	igl::vertex_triangle_adjacency(v_n, F, V2F, V2Fi);
-	cout << "Built V2F: " << timer.getElapsedTime() << endl;
 
 	instructions1.reserve(6*4*f_n); instructions2.reserve(6*4*f_n); instructions3.reserve(6*4*f_n);
 	instructions5.reserve(6*4*f_n); instructions6.reserve(6*4*f_n); instructions9.reserve(6*4*f_n);
@@ -266,14 +247,15 @@ void build_dx_k_maps_3d(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi
 		}
 		
 	}
-	cout << "Built basic instructions: " << timer.getElapsedTime() << endl;
+
+	// sort instructions (for better memory usage)
 	std::sort(instructions1.begin(), instructions1.end());
 	std::sort(instructions2.begin(), instructions2.end());
 	std::sort(instructions3.begin(), instructions3.end());
 	std::sort(instructions5.begin(), instructions5.end());
 	std::sort(instructions6.begin(), instructions6.end());
 	std::sort(instructions9.begin(), instructions9.end());
-	cout << "Sorted instructions: " << timer.getElapsedTime() << endl;
+
 
 	// build the reference index
 	int full_num = ceil(2*aj_size/9.); int part_num = ceil(aj_size/9. + v_n);
@@ -286,8 +268,6 @@ void build_dx_k_maps_3d(const int v_n, const Eigen::MatrixXi& F, Eigen::VectorXi
 	build_index_from_instructions(instructions5, inst5_idx);
 	build_index_from_instructions(instructions6, inst6_idx);
 	build_index_from_instructions(instructions9, inst9_idx);
-
-	cout << "finished building instructions: " << timer.getElapsedTime() << endl;
 }
 
 void build_index_from_instructions(instruction_list& instructions, std::vector<int>& inst_idx) {
@@ -331,22 +311,6 @@ void multiply_dx_by_W_3d(const Eigen::VectorXd& k1, const Eigen::VectorXd& face_
 }
 
 void dx_to_csr(const Eigen::SparseMatrix<double>& L, Eigen::VectorXi& ia, Eigen::VectorXi& ja, Eigen::VectorXd& a) {
-   //assumption: we don't have i>j in II,JJ, hence these are not needed
-
- //  std::vector<int> pick;
- //  pick.reserve(II.size()/2);
- //  for (int i = 0; i<II.size();++i)
- //    if (II[i]<=JJ[i])
- //      pick.push_back(i);
- //  Eigen::MatrixXi M0(pick.size(),3);
- //  Eigen::VectorXd S1(pick.size(),1);
- //  for (int i = 0; i<pick.size();++i)
- //  {
- //    M0.row(i)<< II[pick[i]], JJ[pick[i]], i;
- //    S1[i] = SS[pick[i]];
- //  }
-
-   //todo: make sure diagonal terms are included, even as zeros (pardiso claims this is necessary for best performance)
 
 	int nnz = L.nonZeros();
     int expected_size = (nnz-L.rows())/2 + L.rows();
@@ -403,7 +367,6 @@ void dx_to_csr(const Eigen::SparseMatrix<double>& L, Eigen::VectorXi& ia, Eigen:
    {
      a(i) = 0;
      for (int j=0; j<iis[i].size(); ++j)
- //      a(i) += S1(iis[i](j));
        a(i) += SS[iis[i](j)];
    }
 
@@ -440,7 +403,6 @@ void csr_to_mat(int m, int n, const Eigen::VectorXi& ai, const Eigen::VectorXi& 
 void tet_adjacency_list(const Eigen::MatrixXi& F, std::vector<std::vector<int> >& A) {
   A.clear(); 
   A.resize(F.maxCoeff()+1);
-  cout << "A.size() = " << A.size() << endl;
   
   Eigen::Matrix<int,Eigen::Dynamic,2> edges;
   edges.resize(6,2);
@@ -459,7 +421,6 @@ void tet_adjacency_list(const Eigen::MatrixXi& F, std::vector<std::vector<int> >
     for(int e = 0;e<edges.rows();e++) {
       int v1 = F(i,edges(e,0));
       int v2 = F(i,edges(e,1));
-      //cout << "i = " << i << " j = " << j << endl;
       A[v1].push_back(v2);
       A[v2].push_back(v1);
     }
