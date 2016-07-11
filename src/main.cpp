@@ -24,7 +24,7 @@ void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::Vector
 Eigen::MatrixXd V;
 Eigen::MatrixXi F;
 
-const int ITER_NUM = 5;
+const int ITER_NUM = 7;
 
 int main(int argc, char *argv[]) {
   if (argc < 3) {
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
   check_mesh_for_issues(sData.V,sData.F, sData.M);
   cout << "\tMesh is valid!" << endl;
 
-  sData.global_local_energy = SLIMData::SYMMETRIC_DIRICHLET;
+  sData.slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
   
   dirichlet_on_circle(sData.V,sData.F,sData.V_o);
   if (count_flips(sData.V,sData.F,sData.V_o) > 0) {

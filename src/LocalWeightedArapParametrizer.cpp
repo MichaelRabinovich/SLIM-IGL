@@ -69,7 +69,7 @@ void LocalWeightedArapParametrizer::update_weights_and_closest_rotations(const E
     s1 = sing(0); s2 = sing(1);
 
     // Update Weights according to energy
-    switch(m_state.global_local_energy) {
+    switch(m_state.slim_energy) {
     case SLIMData::ARAP: {
       m_sing_new << 1,1;
       break;
@@ -338,7 +338,7 @@ double LocalWeightedArapParametrizer::compute_energy_with_jacobians(const Eigen:
     igl::polar_svd(ji,ri,ti,ui,sing,vi);
     double s1 = sing(0); double s2 = sing(1);
 
-    switch(m_state.global_local_energy) {
+    switch(m_state.slim_energy) {
       case SLIMData::ARAP: {
         energy+= areas(i) * (pow(s1-1,2) + pow(s2-1,2));
         break;

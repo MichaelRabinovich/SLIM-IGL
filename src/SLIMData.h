@@ -35,7 +35,7 @@ public:
   // result measurements
   double energy;
 
-  enum GLOBAL_LOCAL_ENERGY {
+  enum SLIM_ENERGY {
   ARAP,
   LOG_ARAP,
   SYMMETRIC_DIRICHLET,
@@ -44,7 +44,7 @@ public:
   AMIPS_ISO_2D,
   EXP_symmd
   };
-  GLOBAL_LOCAL_ENERGY global_local_energy;
+  SLIM_ENERGY slim_energy;
 
   // constraints (and or stiffness)
   Eigen::VectorXi b;
