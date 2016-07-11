@@ -36,13 +36,13 @@ public:
   double energy;
 
   enum SLIM_ENERGY {
-  ARAP,
-  LOG_ARAP,
-  SYMMETRIC_DIRICHLET,
-  CONFORMAL,
-  EXP_CONFORMAL,
-  AMIPS_ISO_2D,
-  EXP_symmd
+    ARAP,
+    LOG_ARAP,
+    SYMMETRIC_DIRICHLET,
+    CONFORMAL,
+    EXP_CONFORMAL,
+    AMIPS_ISO_2D,
+    EXP_symmd
   };
   SLIM_ENERGY slim_energy;
 
