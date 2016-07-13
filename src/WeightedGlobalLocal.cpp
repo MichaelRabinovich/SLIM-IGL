@@ -161,8 +161,8 @@ void WeightedGlobalLocal::solve_weighted_arap(const Eigen::MatrixXd& V, const Ei
           neg_rhs,Eigen::VectorXd(),Beq,
           Uc);
 
-  uv.col(0) = Uc.block(0,0,m_state.v_num,1);
-  uv.col(1) = Uc.block(m_state.v_num,0,m_state.v_num,1);
+  for (int i = 0; i < dim; i++)
+    uv.col(i) = Uc.block(i*v_n,0,v_n,1);
 }
 
 void WeightedGlobalLocal::pre_calc() {
@@ -201,7 +201,7 @@ void WeightedGlobalLocal::pre_calc() {
 }
 
 void WeightedGlobalLocal::buildA(Eigen::SparseMatrix<double>& A) {
-
+  // formula (35) in paper
   std::vector<Triplet<double> > IJV;
   if (dim == 2) {
     IJV.reserve(4*(Dx.outerSize()+ Dy.outerSize()));
@@ -313,18 +313,45 @@ void WeightedGlobalLocal::buildA(Eigen::SparseMatrix<double>& A) {
 }
 
 void WeightedGlobalLocal::buildRhs(const Eigen::SparseMatrix<double>& At) {
-  /*rhs = [W11*R11 + W12*R21;
+  VectorXd f_rhs(dim*dim*f_n); f_rhs.setZero();
+  if (dim==2) {
+    /*b = [W11*R11 + W12*R21; (formula (36))
          W11*R12 + W12*R22;
          W21*R11 + W22*R21;
          W21*R12 + W22*R22];*/
-  VectorXd f_rhs(dim*dim*f_n); f_rhs.setZero();
-  for (int i = 0; i < f_n; i++) {
-    f_rhs(i+0*f_n) = W_11(i) * Ri(i,0) + W_12(i)*Ri(i,1);
-    f_rhs(i+1*f_n) = W_11(i) * Ri(i,2) + W_12(i)*Ri(i,3);
-    f_rhs(i+2*f_n) = W_21(i) * Ri(i,0) + W_22(i)*Ri(i,1);
-    f_rhs(i+3*f_n) = W_21(i) * Ri(i,2) + W_22(i)*Ri(i,3);
+    for (int i = 0; i < f_n; i++) {
+      f_rhs(i+0*f_n) = W_11(i) * Ri(i,0) + W_12(i)*Ri(i,1);
+      f_rhs(i+1*f_n) = W_11(i) * Ri(i,2) + W_12(i)*Ri(i,3);
+      f_rhs(i+2*f_n) = W_21(i) * Ri(i,0) + W_22(i)*Ri(i,1);
+      f_rhs(i+3*f_n) = W_21(i) * Ri(i,2) + W_22(i)*Ri(i,3);
+    }  
+  } else {
+    /*b = [W11*R11 + W12*R21 + W13*R31;
+         W11*R12 + W12*R22 + W13*R32;
+         W11*R13 + W12*R23 + W13*R33;
+         W21*R11 + W22*R21 + W23*R31;
+         W21*R12 + W22*R22 + W23*R32;
+         W21*R13 + W22*R23 + W23*R33;
+         W31*R11 + W32*R21 + W33*R31;
+         W31*R12 + W32*R22 + W33*R32;
+         W31*R13 + W32*R23 + W33*R33;];*/
+    for (int i = 0; i < f_n; i++) {
+      f_rhs(i+0*f_n) = W_11(i) * Ri(i,0) + W_12(i)*Ri(i,1) + W_13(i)*Ri(i,2);
+      f_rhs(i+1*f_n) = W_11(i) * Ri(i,3) + W_12(i)*Ri(i,4) + W_13(i)*Ri(i,5);
+      f_rhs(i+2*f_n) = W_11(i) * Ri(i,6) + W_12(i)*Ri(i,7) + W_13(i)*Ri(i,8);
+      f_rhs(i+3*f_n) = W_21(i) * Ri(i,0) + W_22(i)*Ri(i,1) + W_23(i)*Ri(i,2);
+      f_rhs(i+4*f_n) = W_21(i) * Ri(i,3) + W_22(i)*Ri(i,4) + W_23(i)*Ri(i,5);
+      f_rhs(i+5*f_n) = W_21(i) * Ri(i,6) + W_22(i)*Ri(i,7) + W_23(i)*Ri(i,8);
+      f_rhs(i+6*f_n) = W_31(i) * Ri(i,0) + W_32(i)*Ri(i,1) + W_33(i)*Ri(i,2);
+      f_rhs(i+7*f_n) = W_31(i) * Ri(i,3) + W_32(i)*Ri(i,4) + W_33(i)*Ri(i,5);
+      f_rhs(i+8*f_n) = W_31(i) * Ri(i,6) + W_32(i)*Ri(i,7) + W_33(i)*Ri(i,8);
+    }
   }
-  VectorXd uv_flat = igl::cat<VectorXd>(1, m_state.V_o.col(0), m_state.V_o.col(1));
+  VectorXd uv_flat(dim*v_n);
+  for (int i = 0; i < dim; i++)
+    for (int j = 0; j < v_n; j++)
+      uv_flat(v_n*i+j) = m_state.V_o(j,i);
+
   rhs = (At*M.asDiagonal()*f_rhs + m_state.proximal_p * uv_flat);
 }
 
@@ -348,13 +375,12 @@ void WeightedGlobalLocal::build_linear_system(Eigen::SparseMatrix<double> &L) {
 
 void WeightedGlobalLocal::add_soft_constraints(Eigen::SparseMatrix<double> &L) {
   int v_n = m_state.v_num;
-  for (int i = 0; i < m_state.b.rows(); i++) {
-    int v_idx = m_state.b(i);
-    rhs(v_idx) += m_state.soft_const_p * m_state.bc(i,0);
-    rhs(v_n + v_idx) += m_state.soft_const_p * m_state.bc(i,1);
-
-    L.coeffRef(v_idx, v_idx) += m_state.soft_const_p;
-    L.coeffRef(2*v_idx, 2*v_idx) += m_state.soft_const_p;
+  for (int d = 0; d < dim; d++) {
+    for (int i = 0; i < m_state.b.rows(); i++) {
+      int v_idx = m_state.b(i);
+      rhs(d*v_n + v_idx) += m_state.soft_const_p * m_state.bc(i,0); // rhs
+      L.coeffRef(d*v_n + v_idx, d*v_n + v_idx) += m_state.soft_const_p; // diagonal of matrix
+    }  
   }
 }
 
