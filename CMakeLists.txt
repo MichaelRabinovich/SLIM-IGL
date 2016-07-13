@@ -82,12 +82,10 @@ include_directories(
 
 set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/eigen_stl_utils.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/parametrization_utils.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/geometric_utils.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/SLIMData.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/LocalWeightedArapParametrizer.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/LinesearchParametrizer.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/FastLsBuildUtils.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/WeightedGlobalLocal.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Linesearch.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Slim.cpp
   ${ADDITIONAL_SOURCES}
 )
