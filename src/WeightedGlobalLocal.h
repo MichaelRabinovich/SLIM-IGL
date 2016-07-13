@@ -37,6 +37,7 @@ public:
 
 private:
 
+  void buildA(Eigen::SparseMatrix<double>& A);
   void update_weights_and_closest_rotations(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, Eigen::MatrixXd& uv);
   void solve_weighted_arap(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, Eigen::MatrixXd& uv, Eigen::VectorXi& b,
       Eigen::MatrixXd& bc);
