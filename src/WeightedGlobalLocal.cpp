@@ -101,21 +101,7 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
 
         m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));
         break;
-    } case SLIMData::AMIPS_ISO_2D: {
-        // Amips ISO energy in singular values: exp(5* (  0.5*(s1/s2 +s2/s1) + 0.25*( s1*s2 + 1/(s1*s2) )  ) )
-        // Partial derivatives for s1 is: 5*( 0.25 * (s2-1/(s2*s1^2)) + 0.5*(1/s2 - s2/(s1^2))  )* exp(5* (  0.5*(s1/s2 +s2/s1) + 0.25*( s1*s2 + 1/(s1*s2) )  ) )
-        double exp_thing = exp(exp_factor*(0.5*(s1/s2 + s2/s1) + 0.25*(s1*s2 + pow(s1*s2,-1))));
-        double s1_g = exp_thing*exp_factor * (0.25 * (s2- (1./(s2*pow(s1,2)))) + 0.5 * ((1./s2) - s2/(pow(s1,2))) ); //(exp_factor/4)*(s2- (1./(s2*pow(s1,2))))*exp_thing + (exp_factor/2)*((1./s2) - s2/(pow(s1,2)))*exp_thing;
-        double s2_g = exp_thing*exp_factor * (0.25 * (s1- (1./(s1*pow(s2,2)))) + 0.5 * ((1./s1) - s1/(pow(s2,2))) );
-        
-        double s1_zero = sqrt(2*pow(s2,2)+1)/sqrt(pow(s2,2)+2); double s2_zero = sqrt(2*pow(s1,2)+1)/sqrt(pow(s1,2)+2);
-        m_sing_new << sqrt(s1_g/(2*(s1-s1_zero))), sqrt(s2_g/(2*(s2-s2_zero)));
-
-        // change local step
-        closest_sing_vec << s1_zero, s2_zero;
-        ri = ui*closest_sing_vec.asDiagonal()*vi.transpose();
-        break;
-    } case SLIMData::EXP_symmd: {
+    } case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
         double s1_g = 2* (s1-pow(s1,-3)); 
         double s2_g = 2 * (s2-pow(s2,-3));
 
@@ -240,49 +226,90 @@ double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd&
        const Eigen::MatrixXi& F, const Eigen::MatrixXd& Ji, Eigen::MatrixXd& uv, Eigen::VectorXd& areas) {
 
   double energy = 0;
-  Eigen::Matrix<double,2,2> ji;
-  for (int i = 0; i < f_n; i++) {
-    ji(0,0) = Ji(i,0); ji(0,1) = Ji(i,1);
-    ji(1,0) = Ji(i,2); ji(1,1) = Ji(i,3);
-    
-    typedef Eigen::Matrix<double,2,2> Mat2;
-    typedef Eigen::Matrix<double,2,1> Vec2;
-    Mat2 ri,ti,ui,vi; Vec2 sing;
-    igl::polar_svd(ji,ri,ti,ui,sing,vi);
-    double s1 = sing(0); double s2 = sing(1);
+  if (dim == 2) {
+    Eigen::Matrix<double,2,2> ji;
+    for (int i = 0; i < f_n; i++) {
+      ji(0,0) = Ji(i,0); ji(0,1) = Ji(i,1);
+      ji(1,0) = Ji(i,2); ji(1,1) = Ji(i,3);
+      
+      typedef Eigen::Matrix<double,2,2> Mat2;
+      typedef Eigen::Matrix<double,2,1> Vec2;
+      Mat2 ri,ti,ui,vi; Vec2 sing;
+      igl::polar_svd(ji,ri,ti,ui,sing,vi);
+      double s1 = sing(0); double s2 = sing(1);
 
-    switch(m_state.slim_energy) {
-      case SLIMData::ARAP: {
-        energy+= areas(i) * (pow(s1-1,2) + pow(s2-1,2));
-        break;
+      switch(m_state.slim_energy) {
+        case SLIMData::ARAP: {
+          energy+= areas(i) * (pow(s1-1,2) + pow(s2-1,2));
+          break;
+        }
+        case SLIMData::SYMMETRIC_DIRICHLET: {
+          energy += areas(i) * (pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2));
+          break;
+        }
+        case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
+          energy += areas(i) * exp(m_state.exp_factor*(pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2)));
+          break;
+        }
+        case SLIMData::LOG_ARAP: {
+          energy += areas(i) * (pow(log(s1),2) + pow(log(s2),2));
+          break;
+        }
+        case SLIMData::CONFORMAL: {
+          energy += areas(i) * ( (pow(s1,2)+pow(s2,2))/(2*s1*s2) );
+          break;
+        }
+        case SLIMData::EXP_CONFORMAL: {
+          energy += areas(i) * exp(m_state.exp_factor*((pow(s1,2)+pow(s2,2))/(2*s1*s2)));
+          break;
+        }
+
       }
-      case SLIMData::SYMMETRIC_DIRICHLET: {
-        energy += areas(i) * (pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2));
-        break;
-      }
-      case SLIMData::LOG_ARAP: {
-        energy += areas(i) * (pow(log(s1),2) + pow(log(s2),2));
-        break;
-      }
-      case SLIMData::CONFORMAL: {
-        energy += areas(i) * ( (pow(s1,2)+pow(s2,2))/(2*s1*s2) );
-        break;
-      }
-      case SLIMData::EXP_CONFORMAL: {
-        energy += areas(i) * exp(m_state.exp_factor*((pow(s1,2)+pow(s2,2))/(2*s1*s2)));
-        break;
-      }
-      case SLIMData::AMIPS_ISO_2D: {
-        energy += areas(i) * exp(m_state.exp_factor* (  0.5*( (s1/s2) +(s2/s1) ) + 0.25*( (s1*s2) + (1./(s1*s2)) )  ) );
-        break;
-      }
-      case SLIMData::EXP_symmd: {
-        energy += areas(i) * exp(m_state.exp_factor*(pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2)));
-        break;
+    
+    }
+  } else {
+    //schaeffer_e = log_e = conf_e = exp_conf = 0; exp_schaefer = 0;
+    Eigen::Matrix<double,3,3> ji;
+    for (int i = 0; i < f_n; i++) {
+      ji(0,0) = Ji(i,0); ji(0,1) = Ji(i,1); ji(0,2) = Ji(i,2);
+      ji(1,0) = Ji(i,3); ji(1,1) = Ji(i,4); ji(1,2) = Ji(i,5);
+      ji(2,0) = Ji(i,6); ji(2,1) = Ji(i,7); ji(2,2) = Ji(i,8);
+      
+      typedef Eigen::Matrix<double,3,3> Mat3;
+      typedef Eigen::Matrix<double,3,1> Vec3;
+      Mat3 ri,ti,ui,vi; Vec3 sing;
+      igl::polar_svd(ji,ri,ti,ui,sing,vi);
+      double s1 = sing(0); double s2 = sing(1); double s3 = sing(2);
+
+      switch(m_state.slim_energy) {
+        case SLIMData::ARAP: {
+          energy+= areas(i) * (pow(s1-1,2) + pow(s2-1,2) + pow(s3-1,2));
+          break;
+        }
+        case SLIMData::SYMMETRIC_DIRICHLET: {
+          energy += areas(i) * (pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2) + pow(s3,2) + pow(s3,-2));
+          break;
+        }
+        case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
+          energy += areas(i) * exp(m_state.exp_factor*(pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2) + pow(s3,2) + pow(s3,-2)));
+          break;
+        }
+        case SLIMData::LOG_ARAP: {
+          energy += areas(i) * (pow(log(s1),2) + pow(log(abs(s2)),2) + pow(log(abs(s3)),2));
+          break;
+        }
+        case SLIMData::CONFORMAL: {
+          energy += areas(i) * ( ( pow(s1,2)+pow(s2,2)+pow(s3,2) ) /(3*pow(s1*s2*s3,2./3.)) );
+          break;
+        }
+        case SLIMData::EXP_CONFORMAL: {
+          energy += areas(i) * exp( ( pow(s1,2)+pow(s2,2)+pow(s3,2) ) /(3*pow(s1*s2*s3,2./3.)) );
+          break;
+        }
       }
     }
-    
   }
+
   return energy;
 }
 

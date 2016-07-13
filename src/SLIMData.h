@@ -36,8 +36,7 @@ public:
     SYMMETRIC_DIRICHLET,
     CONFORMAL,
     EXP_CONFORMAL,
-    AMIPS_ISO_2D,
-    EXP_symmd
+    EXP_SYMMETRIC_DIRICHLET
   };
   SLIM_ENERGY slim_energy;
 
