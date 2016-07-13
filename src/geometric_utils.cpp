@@ -243,3 +243,108 @@ void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::Matr
   D1 = F1.col(0).asDiagonal()*Dx + F1.col(1).asDiagonal()*Dy + F1.col(2).asDiagonal()*Dz;
   D2 = F2.col(0).asDiagonal()*Dx + F2.col(1).asDiagonal()*Dy + F2.col(2).asDiagonal()*Dz;
 }
+
+void compute_tet_grad_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& T,
+                            Eigen::SparseMatrix<double>& Dx, Eigen::SparseMatrix<double>& Dy, Eigen::SparseMatrix<double>& Dz, bool uniform) {
+  using namespace Eigen;
+  cout << "compute_tet_grad_matrix" << endl;
+  assert(T.cols() == 4);
+  const int n = V.rows(); int m = T.rows();
+
+  /*
+      F = [ ...
+      T(:,1) T(:,2) T(:,3); ...
+      T(:,1) T(:,3) T(:,4); ...
+      T(:,1) T(:,4) T(:,2); ...
+      T(:,2) T(:,4) T(:,3)]; */
+  MatrixXi F(4*m,3);
+  for (int i = 0; i < m; i++) {
+    F.row(0*m + i) << T(i,0), T(i,1), T(i,2);
+    F.row(1*m + i) << T(i,0), T(i,2), T(i,3);
+    F.row(2*m + i) << T(i,0), T(i,3), T(i,1);
+    F.row(3*m + i) << T(i,1), T(i,3), T(i,2);
+  }
+  // compute volume of each tet
+  VectorXd vol; igl::volume(V,T,vol);
+
+  VectorXd A(F.rows());
+  //N = normalizerow(normals(V,F)); switch normals and volumnes to switch gradients (keep volumes the same or switch to a constant volume)
+  MatrixXd N(F.rows(),3);
+  if (!uniform) {
+    // compute tetrahedron face normals
+    igl::per_face_normals(V,F,N); int norm_rows = N.rows();// Should we protect against degeneracy? 
+    for (int i = 0; i < norm_rows; i++)
+      N.row(i) /= N.row(i).norm();
+    igl::doublearea(V,F,A); A/=2.;
+  } else {
+    // Use uniform tetrahedra:
+    //      V = h*[0,0,0;1,0,0;0.5,sqrt(3)/2.,0;0.5,sqrt(3)/6.,sqrt(2)/sqrt(3)] (Base is same as for uniform 2d grad but with the appropriate 4th vertex)
+    //      
+    // With normals
+    //         0         0    1.0000
+    //         0.8165   -0.4714   -0.3333
+    //         0          0.9428   -0.3333
+    //         -0.8165   -0.4714   -0.3333
+    for (int i = 0; i < m; i++) {
+      N.row(0*m+i) << 0,0,1;
+      double a = sqrt(2)*std::cbrt(3*vol(i));
+      A(0*m+i) = (pow(a,2)*sqrt(3))/4.;
+    }
+    for (int i = 0; i < m; i++) {
+      N.row(1*m+i) << 0.8165,-0.4714,-0.3333;
+      double a = sqrt(2)*std::cbrt(3*vol(i));
+      A(1*m+i) = (pow(a,2)*sqrt(3))/4.;
+    }
+    for (int i = 0; i < m; i++) {
+      N.row(2*m+i) << 0,0.9428,-0.3333;
+      double a = sqrt(2)*std::cbrt(3*vol(i));
+      A(2*m+i) = (pow(a,2)*sqrt(3))/4.;
+    }
+    for (int i = 0; i < m; i++) {
+      N.row(3*m+i) << -0.8165,-0.4714,-0.3333;
+      double a = sqrt(2)*std::cbrt(3*vol(i));
+      A(3*m+i) = (pow(a,2)*sqrt(3))/4.;
+    }
+    
+  }
+
+  /*  G = sparse( ...
+      [0*m + repmat(1:m,1,4) ...
+       1*m + repmat(1:m,1,4) ...
+       2*m + repmat(1:m,1,4)], ...
+      repmat([T(:,4);T(:,2);T(:,3);T(:,1)],3,1), ...
+      repmat(A./(3*repmat(vol,4,1)),3,1).*N(:), ...
+      3*m,n);*/
+  std::vector<Triplet<double> > Dx_t,Dy_t,Dz_t;
+  for (int i = 0; i < 4*m; i++) {
+    int T_j; // j indexes : repmat([T(:,4);T(:,2);T(:,3);T(:,1)],3,1)
+    switch (i/m) {
+      case 0:
+        T_j = 3;
+        break;
+      case 1:
+        T_j = 1;
+        break;
+      case 2:
+        T_j = 2;
+        break;
+      case 3:
+        T_j = 0;
+        break;
+      default:
+        assert(1<0); // should not get here
+    }
+    int i_idx = i%m;
+    int j_idx = T(i_idx,T_j);
+
+    double val_before_n = A(i)/(3*vol(i_idx));
+    Dx_t.push_back(Triplet<double>(i_idx, j_idx, val_before_n * N(i,0)));
+    Dy_t.push_back(Triplet<double>(i_idx, j_idx, val_before_n * N(i,1)));
+    Dz_t.push_back(Triplet<double>(i_idx, j_idx, val_before_n * N(i,2)));
+  }
+  Dx.resize(m,n); Dy.resize(m,n); Dz.resize(m,n);
+  Dx.setFromTriplets(Dx_t.begin(), Dx_t.end());
+  Dy.setFromTriplets(Dy_t.begin(), Dy_t.end());
+  Dz.setFromTriplets(Dz_t.begin(), Dz_t.end());
+
+}

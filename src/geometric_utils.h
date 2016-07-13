@@ -47,4 +47,8 @@ void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::Matr
                                      const Eigen::MatrixXd& F1, const Eigen::MatrixXd& F2,
                                      Eigen::SparseMatrix<double>& D1, Eigen::SparseMatrix<double>& D2);
 
+void compute_tet_grad_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& T,
+                            Eigen::SparseMatrix<double>& Dx, Eigen::SparseMatrix<double>& Dy, Eigen::SparseMatrix<double>& Dz,
+                            bool uniform);
+
 #endif // GEOMETRIC_UTILS_H

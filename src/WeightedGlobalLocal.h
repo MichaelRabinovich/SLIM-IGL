@@ -30,8 +30,10 @@ public:
   void pre_calc();
 
   Eigen::MatrixXd Ri,Ji;
-  Eigen::VectorXd W_11; Eigen::VectorXd W_12; Eigen::VectorXd W_21; Eigen::VectorXd W_22;
-  Eigen::SparseMatrix<double> Dx,Dy;
+  Eigen::VectorXd W_11; Eigen::VectorXd W_12; Eigen::VectorXd W_13;
+  Eigen::VectorXd W_21; Eigen::VectorXd W_22; Eigen::VectorXd W_23;
+  Eigen::VectorXd W_31; Eigen::VectorXd W_32; Eigen::VectorXd W_33;
+  Eigen::SparseMatrix<double> Dx,Dy,Dz;
 
 private:
 
@@ -52,6 +54,8 @@ private:
 
   bool first_solve;
   bool has_pre_calc = false;
+
+  int dim;
 };
 
 #endif // WEIGHTED_GLOBAL_LOCAL_H

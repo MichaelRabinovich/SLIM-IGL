@@ -236,7 +236,8 @@ double Linesearch::get_min_pos_root_3D(const Eigen::MatrixXd& uv,const Eigen::Ma
       if (max_root > 0) return max_root;
       return INFINITY;
     }
-    case 3: {
+    case 3: 
+    default: {
       std::sort(res.begin(),res.end());
       if (res[0] > 0) return res[0];
       if (res[1] > 0) return res[1];

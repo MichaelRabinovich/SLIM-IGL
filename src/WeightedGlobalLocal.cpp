@@ -24,9 +24,16 @@ void WeightedGlobalLocal::compute_map( const Eigen::MatrixXd& V, const Eigen::Ma
 }
 
 void WeightedGlobalLocal::compute_jacobians(const Eigen::MatrixXd& uv) {
-  // Ji=[D1*u,D2*u,D1*v,D2*v];
-  Ji.col(0) = Dx*uv.col(0); Ji.col(1) = Dy*uv.col(0);
-  Ji.col(2) = Dx*uv.col(1); Ji.col(3) = Dy*uv.col(1);
+  if (m_state.F.cols() == 3){
+    // Ji=[D1*u,D2*u,D1*v,D2*v];
+    Ji.col(0) = Dx*uv.col(0); Ji.col(1) = Dy*uv.col(0);
+    Ji.col(2) = Dx*uv.col(1); Ji.col(3) = Dy*uv.col(1);
+  } else /*tet mesh*/{
+    // Ji=[D1*u,D2*u,D3*u, D1*v,D2*v, D3*v, D1*w,D2*w,D3*w];
+    Ji.col(0) = Dx*uv.col(0); Ji.col(1) = Dy*uv.col(0); Ji.col(2) = Dz*uv.col(0);
+    Ji.col(3) = Dx*uv.col(1); Ji.col(4) = Dy*uv.col(1); Ji.col(5) = Dz*uv.col(1);
+    Ji.col(6) = Dx*uv.col(2); Ji.col(7) = Dy*uv.col(2); Ji.col(8) = Dz*uv.col(2);
+  }
 }
 
 void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::MatrixXd& V,
@@ -159,14 +166,26 @@ void WeightedGlobalLocal::solve_weighted_arap(const Eigen::MatrixXd& V, const Ei
 void WeightedGlobalLocal::pre_calc() {
   if (!has_pre_calc) {
     int f_n = m_state.f_num;
-    W_11.resize(f_n); W_12.resize(f_n); W_21.resize(f_n); W_22.resize(f_n);
-    Ri.resize(f_n, 4); Ji.resize(f_n, 4);
-    Eigen::MatrixXd F1,F2,F3;
 
-    igl::local_basis(m_state.V,m_state.F,F1,F2,F3);
-    compute_surface_gradient_matrix(m_state.V,m_state.F,F1,F2,Dx,Dy);
+    if (m_state.F.cols() == 3) {
+      dim = 2;
+      Eigen::MatrixXd F1,F2,F3;
+      igl::local_basis(m_state.V,m_state.F,F1,F2,F3);
+      compute_surface_gradient_matrix(m_state.V,m_state.F,F1,F2,Dx,Dy);
 
-    rhs.resize(2*m_state.v_num);
+      W_11.resize(f_n); W_12.resize(f_n); W_21.resize(f_n); W_22.resize(f_n);
+    } else {
+      dim = 3;
+      compute_tet_grad_matrix(m_state.V,m_state.F,Dx,Dy,Dz,false /*remeshing, TODO: support me*/);
+
+      W_11.resize(f_n);W_12.resize(f_n);W_13.resize(f_n);
+      W_21.resize(f_n);W_22.resize(f_n);W_23.resize(f_n);
+      W_31.resize(f_n);W_32.resize(f_n);W_33.resize(f_n);
+    }
+
+    Dx.makeCompressed();Dy.makeCompressed(); Dz.makeCompressed();
+    Ri.resize(f_n, dim*dim); Ji.resize(f_n, dim*dim);
+    rhs.resize(dim*m_state.v_num);
 
     first_solve = true;
     has_pre_calc = true;
@@ -219,7 +238,7 @@ void WeightedGlobalLocal::build_linear_system(Eigen::SparseMatrix<double> &L) {
   
   Eigen::VectorXd M4(4*f_n);
   for (int i = 0; i < f_n; i++) {
-    M4(i) = M4(i+f_n) = M4(i+2*f_n) = M4(i+3*f_n) = m_state.M(i);
+    M4(i) = M4(i+1*f_n) = M4(i+2*f_n) = M4(i+3*f_n) = m_state.M(i);
   }
 
   Eigen::SparseMatrix<double> id_m(At.rows(),At.rows()); id_m.setIdentity();
