@@ -38,6 +38,7 @@ public:
 private:
 
   void buildA(Eigen::SparseMatrix<double>& A);
+  void buildRhs(const Eigen::SparseMatrix<double>& At);
   void update_weights_and_closest_rotations(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, Eigen::MatrixXd& uv);
   void solve_weighted_arap(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, Eigen::MatrixXd& uv, Eigen::VectorXi& b,
       Eigen::MatrixXd& bc);
@@ -51,7 +52,9 @@ private:
     const Eigen::MatrixXd& Ji, Eigen::MatrixXd& V_o, Eigen::VectorXd& areas);
   
   SLIMData& m_state;
+  Eigen::VectorXd M;
   Eigen::VectorXd rhs;
+  int f_n,v_n;
 
   bool first_solve;
   bool has_pre_calc = false;

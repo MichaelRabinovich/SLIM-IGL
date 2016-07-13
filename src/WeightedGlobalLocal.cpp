@@ -167,7 +167,7 @@ void WeightedGlobalLocal::solve_weighted_arap(const Eigen::MatrixXd& V, const Ei
 
 void WeightedGlobalLocal::pre_calc() {
   if (!has_pre_calc) {
-    int f_n = m_state.f_num;
+    v_n = m_state.v_num; f_n = m_state.f_num;
 
     if (m_state.F.cols() == 3) {
       dim = 2;
@@ -189,6 +189,12 @@ void WeightedGlobalLocal::pre_calc() {
     Ri.resize(f_n, dim*dim); Ji.resize(f_n, dim*dim);
     rhs.resize(dim*m_state.v_num);
 
+    // flattened weight matrix
+    M.resize(dim*dim*f_n);
+    for (int i = 0; i < dim*dim; i++) 
+      for (int j = 0; j < f_n; j++) 
+        M(i*f_n + j) = m_state.M(j);
+
     first_solve = true;
     has_pre_calc = true;
   }
@@ -196,7 +202,6 @@ void WeightedGlobalLocal::pre_calc() {
 
 void WeightedGlobalLocal::buildA(Eigen::SparseMatrix<double>& A) {
 
-  int v_n = m_state.v_num; int f_n = m_state.f_num;
   std::vector<Triplet<double> > IJV;
   if (dim == 2) {
     IJV.reserve(4*(Dx.outerSize()+ Dy.outerSize()));
@@ -307,30 +312,7 @@ void WeightedGlobalLocal::buildA(Eigen::SparseMatrix<double>& A) {
   A.setFromTriplets(IJV.begin(),IJV.end());
 }
 
-void WeightedGlobalLocal::build_linear_system(Eigen::SparseMatrix<double> &L) {
-  int f_n = m_state.f_num; int v_n = m_state.v_num;
-
-  // formula (35) in paper
-  Eigen::SparseMatrix<double> A(dim*dim*f_n, dim*v_n);
-  buildA(A);
-
-  Eigen::SparseMatrix<double> At = A.transpose();
-  At.makeCompressed();
-  
-  Eigen::VectorXd M(dim*dim*f_n);
-  for (int i = 0; i < dim*dim; i++) {
-    for (int j = 0; j < f_n; j++) {
-      M(i*f_n + j) = m_state.M(j);
-    }
-  }
-
-  Eigen::SparseMatrix<double> id_m(At.rows(),At.rows()); id_m.setIdentity();
-
-  // add proximal penalty
-  L = At*M.asDiagonal()*A + m_state.proximal_p * id_m; //add also a proximal term
-  L.makeCompressed();
-
-  // build rhs
+void WeightedGlobalLocal::buildRhs(const Eigen::SparseMatrix<double>& At) {
   /*rhs = [W11*R11 + W12*R21;
          W11*R12 + W12*R22;
          W21*R11 + W22*R21;
@@ -344,7 +326,24 @@ void WeightedGlobalLocal::build_linear_system(Eigen::SparseMatrix<double> &L) {
   }
   VectorXd uv_flat = igl::cat<VectorXd>(1, m_state.V_o.col(0), m_state.V_o.col(1));
   rhs = (At*M.asDiagonal()*f_rhs + m_state.proximal_p * uv_flat);
-  add_soft_constraints(L); //TODO: support me
+}
+
+void WeightedGlobalLocal::build_linear_system(Eigen::SparseMatrix<double> &L) {
+  // formula (35) in paper
+  Eigen::SparseMatrix<double> A(dim*dim*f_n, dim*v_n);
+  buildA(A);
+
+  Eigen::SparseMatrix<double> At = A.transpose();
+  At.makeCompressed();
+
+  Eigen::SparseMatrix<double> id_m(At.rows(),At.rows()); id_m.setIdentity();
+
+  // add proximal penalty
+  L = At*M.asDiagonal()*A + m_state.proximal_p * id_m; //add also a proximal term
+  L.makeCompressed();
+
+  buildRhs(At);
+  add_soft_constraints(L);
 }
 
 void WeightedGlobalLocal::add_soft_constraints(Eigen::SparseMatrix<double> &L) {
@@ -368,8 +367,6 @@ double WeightedGlobalLocal::compute_energy(const Eigen::MatrixXd& V,
 
 double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd& V,
        const Eigen::MatrixXi& F, const Eigen::MatrixXd& Ji, Eigen::MatrixXd& uv, Eigen::VectorXd& areas) {
-
-  int f_n = F.rows();
 
   double energy = 0;
   Eigen::Matrix<double,2,2> ji;
