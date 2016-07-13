@@ -234,6 +234,75 @@ void WeightedGlobalLocal::buildA(Eigen::SparseMatrix<double>& A) {
     }
   } else {
 
+    /*A = [W11*Dx, W12*Dx, W13*Dx;
+           W11*Dy, W12*Dy, W13*Dy;
+           W11*Dz, W12*Dz, W13*Dz;
+           W21*Dx, W22*Dx, W23*Dx;
+           W21*Dy, W22*Dy, W23*Dy;
+           W21*Dz, W22*Dz, W23*Dz;
+           W31*Dx, W32*Dx, W33*Dx;
+           W31*Dy, W32*Dy, W33*Dy;
+           W31*Dz, W32*Dz, W33*Dz;];*/
+    IJV.reserve(9*(Dx.outerSize()+ Dy.outerSize() + Dz.outerSize()));
+    for (int k = 0; k < Dx.outerSize(); k++) {
+      for (SparseMatrix<double>::InnerIterator it(Dx,k); it; ++it) {
+         int dx_r = it.row();
+         int dx_c = it.col();
+         double val = it.value();
+
+         IJV.push_back(Triplet<double>(dx_r,dx_c, val*W_11(dx_r)));
+         IJV.push_back(Triplet<double>(dx_r,v_n + dx_c, val*W_12(dx_r)));
+         IJV.push_back(Triplet<double>(dx_r,2*v_n + dx_c, val*W_13(dx_r)));
+
+         IJV.push_back(Triplet<double>(3*f_n+dx_r,dx_c, val*W_21(dx_r)));
+         IJV.push_back(Triplet<double>(3*f_n+dx_r,v_n + dx_c, val*W_22(dx_r)));
+         IJV.push_back(Triplet<double>(3*f_n+dx_r,2*v_n + dx_c, val*W_23(dx_r)));
+
+         IJV.push_back(Triplet<double>(6*f_n+dx_r,dx_c, val*W_31(dx_r)));
+         IJV.push_back(Triplet<double>(6*f_n+dx_r,v_n + dx_c, val*W_32(dx_r)));
+         IJV.push_back(Triplet<double>(6*f_n+dx_r,2*v_n + dx_c, val*W_33(dx_r)));
+      }
+    }
+    
+    for (int k = 0; k < Dy.outerSize(); k++) {
+      for (SparseMatrix<double>::InnerIterator it(Dy,k); it; ++it) {
+         int dy_r = it.row();
+         int dy_c = it.col();
+         double val = it.value();
+
+         IJV.push_back(Triplet<double>(f_n+dy_r,dy_c, val*W_11(dy_r)));
+         IJV.push_back(Triplet<double>(f_n+dy_r,v_n + dy_c, val*W_12(dy_r)));
+         IJV.push_back(Triplet<double>(f_n+dy_r,2*v_n + dy_c, val*W_13(dy_r)));
+
+         IJV.push_back(Triplet<double>(4*f_n+dy_r,dy_c, val*W_21(dy_r)));
+         IJV.push_back(Triplet<double>(4*f_n+dy_r,v_n + dy_c, val*W_22(dy_r)));
+         IJV.push_back(Triplet<double>(4*f_n+dy_r,2*v_n + dy_c, val*W_23(dy_r)));
+
+         IJV.push_back(Triplet<double>(7*f_n+dy_r,dy_c, val*W_31(dy_r)));
+         IJV.push_back(Triplet<double>(7*f_n+dy_r,v_n + dy_c, val*W_32(dy_r)));
+         IJV.push_back(Triplet<double>(7*f_n+dy_r,2*v_n + dy_c, val*W_33(dy_r)));
+      }
+    }
+    
+    for (int k = 0; k < Dz.outerSize(); k++) {
+      for (SparseMatrix<double>::InnerIterator it(Dz,k); it; ++it) {
+         int dz_r = it.row();
+         int dz_c = it.col();
+         double val = it.value();
+
+         IJV.push_back(Triplet<double>(2*f_n + dz_r,dz_c, val*W_11(dz_r)));
+         IJV.push_back(Triplet<double>(2*f_n + dz_r,v_n + dz_c, val*W_12(dz_r)));
+         IJV.push_back(Triplet<double>(2*f_n + dz_r,2*v_n + dz_c, val*W_13(dz_r)));
+
+         IJV.push_back(Triplet<double>(5*f_n+dz_r,dz_c, val*W_21(dz_r)));
+         IJV.push_back(Triplet<double>(5*f_n+dz_r,v_n + dz_c, val*W_22(dz_r)));
+         IJV.push_back(Triplet<double>(5*f_n+dz_r,2*v_n + dz_c, val*W_23(dz_r)));
+
+         IJV.push_back(Triplet<double>(8*f_n+dz_r,dz_c, val*W_31(dz_r)));
+         IJV.push_back(Triplet<double>(8*f_n+dz_r,v_n + dz_c, val*W_32(dz_r)));
+         IJV.push_back(Triplet<double>(8*f_n+dz_r,2*v_n + dz_c, val*W_33(dz_r)));
+      }
+    }
   }
   A.setFromTriplets(IJV.begin(),IJV.end());
 }
