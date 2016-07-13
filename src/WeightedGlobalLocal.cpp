@@ -200,6 +200,92 @@ void WeightedGlobalLocal::pre_calc() {
   }
 }
 
+void WeightedGlobalLocal::build_linear_system(Eigen::SparseMatrix<double> &L) {
+  // formula (35) in paper
+  Eigen::SparseMatrix<double> A(dim*dim*f_n, dim*v_n);
+  buildA(A);
+
+  Eigen::SparseMatrix<double> At = A.transpose();
+  At.makeCompressed();
+
+  Eigen::SparseMatrix<double> id_m(At.rows(),At.rows()); id_m.setIdentity();
+
+  // add proximal penalty
+  L = At*M.asDiagonal()*A + m_state.proximal_p * id_m; //add also a proximal term
+  L.makeCompressed();
+
+  buildRhs(At);
+  add_soft_constraints(L);
+}
+
+void WeightedGlobalLocal::add_soft_constraints(Eigen::SparseMatrix<double> &L) {
+  int v_n = m_state.v_num;
+  for (int d = 0; d < dim; d++) {
+    for (int i = 0; i < m_state.b.rows(); i++) {
+      int v_idx = m_state.b(i);
+      rhs(d*v_n + v_idx) += m_state.soft_const_p * m_state.bc(i,0); // rhs
+      L.coeffRef(d*v_n + v_idx, d*v_n + v_idx) += m_state.soft_const_p; // diagonal of matrix
+    }  
+  }
+}
+
+double WeightedGlobalLocal::compute_energy(const Eigen::MatrixXd& V,
+                                                       const Eigen::MatrixXi& F,  
+                                                       Eigen::MatrixXd& V_o) {
+  compute_jacobians(V_o);
+  return compute_energy_with_jacobians(V,F, Ji, V_o,m_state.M);
+}
+
+double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd& V,
+       const Eigen::MatrixXi& F, const Eigen::MatrixXd& Ji, Eigen::MatrixXd& uv, Eigen::VectorXd& areas) {
+
+  double energy = 0;
+  Eigen::Matrix<double,2,2> ji;
+  for (int i = 0; i < f_n; i++) {
+    ji(0,0) = Ji(i,0); ji(0,1) = Ji(i,1);
+    ji(1,0) = Ji(i,2); ji(1,1) = Ji(i,3);
+    
+    typedef Eigen::Matrix<double,2,2> Mat2;
+    typedef Eigen::Matrix<double,2,1> Vec2;
+    Mat2 ri,ti,ui,vi; Vec2 sing;
+    igl::polar_svd(ji,ri,ti,ui,sing,vi);
+    double s1 = sing(0); double s2 = sing(1);
+
+    switch(m_state.slim_energy) {
+      case SLIMData::ARAP: {
+        energy+= areas(i) * (pow(s1-1,2) + pow(s2-1,2));
+        break;
+      }
+      case SLIMData::SYMMETRIC_DIRICHLET: {
+        energy += areas(i) * (pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2));
+        break;
+      }
+      case SLIMData::LOG_ARAP: {
+        energy += areas(i) * (pow(log(s1),2) + pow(log(s2),2));
+        break;
+      }
+      case SLIMData::CONFORMAL: {
+        energy += areas(i) * ( (pow(s1,2)+pow(s2,2))/(2*s1*s2) );
+        break;
+      }
+      case SLIMData::EXP_CONFORMAL: {
+        energy += areas(i) * exp(m_state.exp_factor*((pow(s1,2)+pow(s2,2))/(2*s1*s2)));
+        break;
+      }
+      case SLIMData::AMIPS_ISO_2D: {
+        energy += areas(i) * exp(m_state.exp_factor* (  0.5*( (s1/s2) +(s2/s1) ) + 0.25*( (s1*s2) + (1./(s1*s2)) )  ) );
+        break;
+      }
+      case SLIMData::EXP_symmd: {
+        energy += areas(i) * exp(m_state.exp_factor*(pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2)));
+        break;
+      }
+    }
+    
+  }
+  return energy;
+}
+
 void WeightedGlobalLocal::buildA(Eigen::SparseMatrix<double>& A) {
   // formula (35) in paper
   std::vector<Triplet<double> > IJV;
@@ -353,90 +439,4 @@ void WeightedGlobalLocal::buildRhs(const Eigen::SparseMatrix<double>& At) {
       uv_flat(v_n*i+j) = m_state.V_o(j,i);
 
   rhs = (At*M.asDiagonal()*f_rhs + m_state.proximal_p * uv_flat);
-}
-
-void WeightedGlobalLocal::build_linear_system(Eigen::SparseMatrix<double> &L) {
-  // formula (35) in paper
-  Eigen::SparseMatrix<double> A(dim*dim*f_n, dim*v_n);
-  buildA(A);
-
-  Eigen::SparseMatrix<double> At = A.transpose();
-  At.makeCompressed();
-
-  Eigen::SparseMatrix<double> id_m(At.rows(),At.rows()); id_m.setIdentity();
-
-  // add proximal penalty
-  L = At*M.asDiagonal()*A + m_state.proximal_p * id_m; //add also a proximal term
-  L.makeCompressed();
-
-  buildRhs(At);
-  add_soft_constraints(L);
-}
-
-void WeightedGlobalLocal::add_soft_constraints(Eigen::SparseMatrix<double> &L) {
-  int v_n = m_state.v_num;
-  for (int d = 0; d < dim; d++) {
-    for (int i = 0; i < m_state.b.rows(); i++) {
-      int v_idx = m_state.b(i);
-      rhs(d*v_n + v_idx) += m_state.soft_const_p * m_state.bc(i,0); // rhs
-      L.coeffRef(d*v_n + v_idx, d*v_n + v_idx) += m_state.soft_const_p; // diagonal of matrix
-    }  
-  }
-}
-
-double WeightedGlobalLocal::compute_energy(const Eigen::MatrixXd& V,
-                                                       const Eigen::MatrixXi& F,  
-                                                       Eigen::MatrixXd& V_o) {
-  compute_jacobians(V_o);
-  return compute_energy_with_jacobians(V,F, Ji, V_o,m_state.M);
-}
-
-double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd& V,
-       const Eigen::MatrixXi& F, const Eigen::MatrixXd& Ji, Eigen::MatrixXd& uv, Eigen::VectorXd& areas) {
-
-  double energy = 0;
-  Eigen::Matrix<double,2,2> ji;
-  for (int i = 0; i < f_n; i++) {
-    ji(0,0) = Ji(i,0); ji(0,1) = Ji(i,1);
-    ji(1,0) = Ji(i,2); ji(1,1) = Ji(i,3);
-    
-    typedef Eigen::Matrix<double,2,2> Mat2;
-    typedef Eigen::Matrix<double,2,1> Vec2;
-    Mat2 ri,ti,ui,vi; Vec2 sing;
-    igl::polar_svd(ji,ri,ti,ui,sing,vi);
-    double s1 = sing(0); double s2 = sing(1);
-
-    switch(m_state.slim_energy) {
-      case SLIMData::ARAP: {
-        energy+= areas(i) * (pow(s1-1,2) + pow(s2-1,2));
-        break;
-      }
-      case SLIMData::SYMMETRIC_DIRICHLET: {
-        energy += areas(i) * (pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2));
-        break;
-      }
-      case SLIMData::LOG_ARAP: {
-        energy += areas(i) * (pow(log(s1),2) + pow(log(s2),2));
-        break;
-      }
-      case SLIMData::CONFORMAL: {
-        energy += areas(i) * ( (pow(s1,2)+pow(s2,2))/(2*s1*s2) );
-        break;
-      }
-      case SLIMData::EXP_CONFORMAL: {
-        energy += areas(i) * exp(m_state.exp_factor*((pow(s1,2)+pow(s2,2))/(2*s1*s2)));
-        break;
-      }
-      case SLIMData::AMIPS_ISO_2D: {
-        energy += areas(i) * exp(m_state.exp_factor* (  0.5*( (s1/s2) +(s2/s1) ) + 0.25*( (s1*s2) + (1./(s1*s2)) )  ) );
-        break;
-      }
-      case SLIMData::EXP_symmd: {
-        energy += areas(i) * exp(m_state.exp_factor*(pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2)));
-        break;
-      }
-    }
-    
-  }
-  return energy;
 }
