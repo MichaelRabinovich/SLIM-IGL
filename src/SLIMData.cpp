@@ -11,6 +11,7 @@ SLIMData::SLIMData(Eigen::MatrixXd& V_in, Eigen::MatrixXi& F_in) : V(V_in), F(F_
   f_num = F.rows();
   igl::doublearea(V,F,M); M /= 2.;
   mesh_area = M.sum();
+  mesh_improvement_3d = false;
 }
 
 void SLIMData::save(const std::string filename) {

@@ -286,7 +286,8 @@ void WeightedGlobalLocal::pre_calc() {
       W_11.resize(f_n); W_12.resize(f_n); W_21.resize(f_n); W_22.resize(f_n);
     } else {
       dim = 3;
-      compute_tet_grad_matrix(m_state.V,m_state.F,Dx,Dy,Dz,false /*remeshing, TODO: support me*/);
+      compute_tet_grad_matrix(m_state.V,m_state.F,Dx,Dy,Dz,
+        m_state.mesh_improvement_3d /*use normal gradient, or one from a "regular" tet*/);
 
       W_11.resize(f_n);W_12.resize(f_n);W_13.resize(f_n);
       W_21.resize(f_n);W_22.resize(f_n);W_23.resize(f_n);

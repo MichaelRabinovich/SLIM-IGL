@@ -47,6 +47,7 @@ public:
 
   double proximal_p;
   double exp_factor; // used for exponential energies, ignored otherwise
+  bool mesh_improvement_3d; // only supported for 3d
 
   // INTERNAL
   double mesh_area;
