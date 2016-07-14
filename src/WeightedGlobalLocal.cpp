@@ -43,12 +43,14 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
   compute_jacobians(uv);
 
   const double eps = 1e-8;
-  double exp_factor = m_state.exp_factor;
-  for(int i=0; i <Ji.rows(); ++i ) {
+  double exp_f = m_state.exp_factor;
+
+  if (dim==2) {
+    for(int i=0; i <Ji.rows(); ++i ) {
     typedef Eigen::Matrix<double,2,2> Mat2;
     typedef Eigen::Matrix<double,2,1> Vec2;
     Mat2 ji,ri,ti,ui,vi; Vec2 sing; Vec2 closest_sing_vec;Mat2 mat_W;
-    Mat2 fGrad; Vec2 m_sing_new;
+    Vec2 m_sing_new;
     double s1,s2;
 
     ji(0,0) = Ji(i,0); ji(0,1) = Ji(i,1);
@@ -62,7 +64,7 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
     switch(m_state.slim_energy) {
     case SLIMData::ARAP: {
       m_sing_new << 1,1;
-      break;
+      break; 
     } case SLIMData::SYMMETRIC_DIRICHLET: {
         double s1_g = 2* (s1-pow(s1,-3)); 
         double s2_g = 2 * (s2-pow(s2,-3));
@@ -93,11 +95,11 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
         double geo_avg = sqrt(s1*s2);
         double s1_min = geo_avg; double s2_min = geo_avg;
 
-        double in_exp = exp_factor*((pow(s1,2)+pow(s2,2))/(2*s1*s2));
+        double in_exp = exp_f*((pow(s1,2)+pow(s2,2))/(2*s1*s2));
         double exp_thing = exp(in_exp);
 
-        s1_g *= exp_thing*exp_factor;
-        s2_g *= exp_thing*exp_factor;
+        s1_g *= exp_thing*exp_f;
+        s2_g *= exp_thing*exp_f;
 
         m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));
         break;
@@ -105,11 +107,11 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
         double s1_g = 2* (s1-pow(s1,-3)); 
         double s2_g = 2 * (s2-pow(s2,-3));
 
-        double in_exp = exp_factor*(pow(s1,2)+pow(s1,-2)+pow(s2,2)+pow(s2,-2));
+        double in_exp = exp_f*(pow(s1,2)+pow(s1,-2)+pow(s2,2)+pow(s2,-2));
         double exp_thing = exp(in_exp);
 
-        s1_g *= exp_thing*exp_factor;
-        s2_g *= exp_thing*exp_factor;
+        s1_g *= exp_thing*exp_f;
+        s2_g *= exp_thing*exp_f;
 
         m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));
         break;
@@ -119,14 +121,134 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
     if (abs(s1-1) < eps) m_sing_new(0) = 1; if (abs(s2-1) < eps) m_sing_new(1) = 1;
     mat_W = ui*m_sing_new.asDiagonal()*ui.transpose();
 
-    W_11(i) = mat_W(0,0);
-    W_12(i) = mat_W(0,1);
-    W_21(i) = mat_W(1,0);
-    W_22(i) = mat_W(1,1);
+    W_11(i) = mat_W(0,0); W_12(i) = mat_W(0,1); W_21(i) = mat_W(1,0); W_22(i) = mat_W(1,1);
 
     // 2) Update local step (doesn't have to be a rotation, for instance in case of conformal energy)
     Ri(i,0) = ri(0,0); Ri(i,1) = ri(1,0); Ri(i,2) = ri(0,1); Ri(i,3) = ri(1,1);
    }
+  } else {
+    typedef Eigen::Matrix<double,3,1> Vec3; typedef Eigen::Matrix<double,3,3> Mat3;
+    Mat3 ji; Vec3 m_sing_new; Vec3 closest_sing_vec;
+    const double sqrt_2 = sqrt(2);
+    for(int i=0; i <Ji.rows(); ++i ) {
+      ji(0,0) = Ji(i,0); ji(0,1) = Ji(i,1); ji(0,2) = Ji(i,2);
+      ji(1,0) = Ji(i,3); ji(1,1) = Ji(i,4); ji(1,2) = Ji(i,5);
+      ji(2,0) = Ji(i,6); ji(2,1) = Ji(i,7); ji(2,2) = Ji(i,8);
+    
+      Mat3 ri,ti,ui,vi;
+      Vec3 sing;
+      igl::polar_svd(ji,ri,ti,ui,sing,vi);
+
+      double s1 = sing(0); double s2 = sing(1); double s3 = sing(2);
+
+      // 1) Update Weights
+      switch(m_state.slim_energy) {
+        case SLIMData::ARAP: {
+          m_sing_new << 1,1,1;
+          break;
+        } case SLIMData::LOG_ARAP: {
+            double s1_g = 2 * (log(s1)/s1); 
+            double s2_g = 2 * (log(s2)/s2); 
+            double s3_g = 2 * (log(s3)/s3); 
+            m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1))), sqrt(s3_g/(2*(s3-1)));
+            break;
+          } case SLIMData::SYMMETRIC_DIRICHLET: {
+            double s1_g = 2* (s1-pow(s1,-3)); 
+            double s2_g = 2 * (s2-pow(s2,-3));
+            double s3_g = 2 * (s3-pow(s3,-3));
+            m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1))), sqrt(s3_g/(2*(s3-1)));
+            break;
+          } case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
+           double s1_g = 2* (s1-pow(s1,-3)); 
+          double s2_g = 2 * (s2-pow(s2,-3));
+          double s3_g = 2 * (s3-pow(s3,-3));
+          m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1))), sqrt(s3_g/(2*(s3-1)));        
+
+          double in_exp = exp_f*(pow(s1,2)+pow(s1,-2)+pow(s2,2)+pow(s2,-2)+pow(s3,2)+pow(s3,-2));
+          double exp_thing = exp(in_exp);
+
+          s1_g *= exp_thing*exp_f;
+          s2_g *= exp_thing*exp_f;
+          s3_g *= exp_thing*exp_f;
+
+          m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1))), sqrt(s3_g/(2*(s3-1)));
+
+          break;
+        }
+        case SLIMData::CONFORMAL: {
+          double common_div = 9*(pow(s1*s2*s3,5./3.));
+
+          double s1_g = (-2*s2*s3*(pow(s2,2)+pow(s3,2)-2*pow(s1,2)) ) / common_div;
+          double s2_g = (-2*s1*s3*(pow(s1,2)+pow(s3,2)-2*pow(s2,2)) ) / common_div;
+          double s3_g = (-2*s1*s2*(pow(s1,2)+pow(s2,2)-2*pow(s3,2)) ) / common_div;
+          
+          double closest_s = sqrt(pow(s1,2)+pow(s3,2)) / sqrt_2;
+          double s1_min = closest_s; double s2_min = closest_s; double s3_min = closest_s;
+
+          m_sing_new << sqrt(s1_g/(2*(s1-s1_min))), sqrt(s2_g/(2*(s2-s2_min))), sqrt(s3_g/(2*(s3-s3_min)));
+
+          if (abs(s1-closest_s) < eps) m_sing_new(0) = closest_s;
+          if (abs(s2-closest_s) < eps) m_sing_new(1) = closest_s;
+          if (abs(s3-closest_s) < eps) m_sing_new(2) = closest_s;
+
+          // change local step
+          closest_sing_vec << s1_min,s2_min,s3_min;
+          ri = ui*closest_sing_vec.asDiagonal()*vi.transpose();
+          break;
+        }
+        case SLIMData::EXP_CONFORMAL: {
+          // E_conf = (s1^2 + s2^2 + s3^2)/(3*(s1*s2*s3)^(2/3) )
+          // dE_conf/ds1 = (-2*(s2*s3)*(s2^2+s3^2 -2*s1^2) ) / (9*(s1*s2*s3)^(5/3))
+          // Argmin E_conf(s1): s1 = sqrt(s1^2+s2^2)/sqrt(2)
+          double common_div = 9*(pow(s1*s2*s3,5./3.));
+
+          double s1_g = (-2*s2*s3*(pow(s2,2)+pow(s3,2)-2*pow(s1,2)) ) / common_div;
+          double s2_g = (-2*s1*s3*(pow(s1,2)+pow(s3,2)-2*pow(s2,2)) ) / common_div;
+          double s3_g = (-2*s1*s2*(pow(s1,2)+pow(s2,2)-2*pow(s3,2)) ) / common_div;
+
+          double in_exp = exp_f*( (pow(s1,2)+pow(s2,2)+pow(s3,2))/ (3*pow((s1*s2*s3),2./3)) ); ;
+          double exp_thing = exp(in_exp);
+          
+          double closest_s = sqrt(pow(s1,2)+pow(s3,2)) / sqrt_2;
+          double s1_min = closest_s; double s2_min = closest_s; double s3_min = closest_s;
+
+          s1_g *= exp_thing*exp_f;
+          s2_g *= exp_thing*exp_f;
+          s3_g *= exp_thing*exp_f;
+          
+          m_sing_new << sqrt(s1_g/(2*(s1-s1_min))), sqrt(s2_g/(2*(s2-s2_min))), sqrt(s3_g/(2*(s3-s3_min)));
+
+          if (abs(s1-closest_s) < eps) m_sing_new(0) = closest_s;
+          if (abs(s2-closest_s) < eps) m_sing_new(1) = closest_s;
+          if (abs(s3-closest_s) < eps) m_sing_new(2) = closest_s;
+
+          // change local step
+          closest_sing_vec << s1_min,s2_min,s3_min;
+          ri = ui*closest_sing_vec.asDiagonal()*vi.transpose();
+        }
+      }
+      if (abs(s1-1) < eps) m_sing_new(0) = 1; if (abs(s2-1) < eps) m_sing_new(1) = 1; if (abs(s3-1) < eps) m_sing_new(2) = 1;
+      Mat3 mat_W;    
+      mat_W = ui*m_sing_new.asDiagonal()*ui.transpose();
+
+      W_11(i) = mat_W(0,0);
+      W_12(i) = mat_W(0,1);
+      W_13(i) = mat_W(0,2);
+      W_21(i) = mat_W(1,0);
+      W_22(i) = mat_W(1,1);
+      W_23(i) = mat_W(1,2);
+      W_31(i) = mat_W(2,0);
+      W_32(i) = mat_W(2,1);
+      W_33(i) = mat_W(2,2);
+
+      // 2) Update closest rotations (not rotations in case of conformal energy)
+      Ri(i,0) = ri(0,0); Ri(i,1) = ri(1,0); Ri(i,2) = ri(2,0);
+      Ri(i,3) = ri(0,1); Ri(i,4) = ri(1,1); Ri(i,5) = ri(2,1);
+      Ri(i,6) = ri(0,2); Ri(i,7) = ri(1,2); Ri(i,8) = ri(2,2);
+    } // for loop end
+
+  } // if dim end
+  
 }
 
 void WeightedGlobalLocal::solve_weighted_arap(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
