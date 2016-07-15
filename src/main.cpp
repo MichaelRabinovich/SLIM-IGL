@@ -73,11 +73,9 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int modifier){
 
 void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
   if (first_iter) {
-    //cout << "Reading mesh " << input_mesh << endl;
     igl::read_triangle_mesh("../camelhead.obj", V, F);
 
     sData = new SLIMData(V,F);
-    //SLIMData sData(V,F);
     check_mesh_for_issues(sData->V,sData->F, sData->M);
     cout << "\tMesh is valid!" << endl;
 
@@ -98,8 +96,9 @@ void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
 
     uv_scale_param = 15 * (1./sqrt(sData->mesh_area));
     viewer.data.set_mesh(V, F);
+    viewer.core.align_camera_center(V,F);
     viewer.data.set_uv(sData->V_o*uv_scale_param);
-    viewer.data.compute_normals();
+    viewer.data.compute_normals();    
     viewer.core.show_texture = true;
 
     first_iter = false;
@@ -127,6 +126,7 @@ void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
     slim->precompute();
 
     viewer.data.set_mesh(V, F);
+    viewer.core.align_camera_center(V,F);
     viewer.data.compute_normals();
     viewer.core.show_lines = true;
 
@@ -193,6 +193,7 @@ void display_3d_mesh(igl::viewer::Viewer& viewer) {
     F_temp.row(i*4+3) << (i*4)+1, (i*4)+2, (i*4)+3;
   }
   viewer.data.set_mesh(V_temp,F_temp);
+  viewer.core.align_camera_center(V_temp,F_temp);
   viewer.data.set_face_based(true);
   viewer.core.show_lines = true;
 }
