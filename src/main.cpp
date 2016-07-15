@@ -5,6 +5,7 @@
 #include "geometric_utils.h"
 
 #include "igl/components.h"
+#include "igl/readOBJ.h"
 #include "igl/writeOBJ.h"
 #include "igl/Timer.h"
 
@@ -21,11 +22,14 @@
 #include <vector>
 
 using namespace std;
+using namespace Eigen;
 
 void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXd& areas);
 void param_2d_demo_iter(igl::viewer::Viewer& viewer);
 void set_soft_constraint_for_circle();
 void soft_const_demo_iter(igl::viewer::Viewer& viewer);
+void deform_3d_demo_iter(igl::viewer::Viewer& viewer);
+void display_3d_mesh(igl::viewer::Viewer& viewer);
 
 Eigen::MatrixXd V;
 Eigen::MatrixXi F;
@@ -51,6 +55,10 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int modifier){
       }
       case SOFT_CONST: {
         soft_const_demo_iter(viewer);
+        break;
+      }
+      case DEFORM_3D: {
+        deform_3d_demo_iter(viewer);
         break;
       }
       default:
@@ -130,6 +138,65 @@ void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
   }
 }
 
+void deform_3d_demo_iter(igl::viewer::Viewer& viewer) {
+  if (first_iter) {
+    igl::readOBJ("../cube_4k.obj", V, F);
+
+    sData = new SLIMData(V,F);
+    sData->V_o = V;
+
+    cout << "V.rows() = " << V.rows() << " F.rows() = " << F.rows() << endl;
+    display_3d_mesh(viewer);
+    first_iter = false;
+  } else {
+
+  }
+}
+
+void display_3d_mesh(igl::viewer::Viewer& viewer) {
+  MatrixXd V_temp; MatrixXi F_temp;
+  Eigen::MatrixXd Barycenters;
+
+  igl::barycenter(sData->V,sData->F,Barycenters);
+  //cout << "Barycenters.rows() = " << Barycenters.rows() << endl;
+  //double t = double((key - '1')+1) / 9.0;
+  double view_depth = 10.;
+  double t = view_depth/9.;
+
+  VectorXd v = Barycenters.col(2).array() - Barycenters.col(2).minCoeff();
+  v /= v.col(0).maxCoeff();
+
+  vector<int> s;
+
+  for (unsigned i=0; i<v.size();++i)
+    if (v(i) < t)
+      s.push_back(i);
+
+  V_temp.resize(s.size()*4,3);
+  F_temp.resize(s.size()*4,3);
+
+  for (unsigned i=0; i<s.size();++i){
+    V_temp.row(i*4+0) = sData->V_o.row(sData->F(s[i],0));
+    V_temp.row(i*4+1) = sData->V_o.row(sData->F(s[i],1));
+    V_temp.row(i*4+2) = sData->V_o.row(sData->F(s[i],2));
+    V_temp.row(i*4+3) = sData->V_o.row(sData->F(s[i],3));
+    F_temp.row(i*4+0) << (i*4)+0, (i*4)+1, (i*4)+3;
+    F_temp.row(i*4+1) << (i*4)+0, (i*4)+2, (i*4)+1;
+    F_temp.row(i*4+2) << (i*4)+3, (i*4)+2, (i*4)+0;
+    F_temp.row(i*4+3) << (i*4)+1, (i*4)+2, (i*4)+3;
+  }
+  cout << "V_temp.rows() = " << V_temp.rows() << endl;
+  viewer.data.set_mesh(V_temp,F_temp);
+  viewer.data.set_face_based(true);
+  viewer.core.show_lines = true;
+}
+
+void get_mesh_for_igl_viewer(Eigen::MatrixXd& V_temp, Eigen::MatrixXi& F_temp) {
+  using namespace Eigen;
+
+
+}
+
 int main(int argc, char *argv[]) {
 
    if (argc < 2) {
@@ -143,6 +210,9 @@ int main(int argc, char *argv[]) {
       break;
     } case 2: {
       demo_type = SOFT_CONST;
+      break;
+    } case 3: {
+      demo_type = DEFORM_3D;
       break;
     }
     default: {
