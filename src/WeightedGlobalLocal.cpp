@@ -6,11 +6,12 @@
 #include "igl/grad.h"
 #include "igl/local_basis.h"
 #include "igl/min_quad_with_fixed.h"
-#include "igl/Timer.h"
 
 #include <Eigen/IterativeLinearSolvers>
 #include <Eigen/Sparse>
 #include <Eigen/SparseQR>
+#include <Eigen/SparseCholesky>
+#include <Eigen/IterativeLinearSolvers>
 
 using namespace Eigen;
 
@@ -251,16 +252,17 @@ void WeightedGlobalLocal::solve_weighted_arap(const Eigen::MatrixXd& V, const Ei
   build_linear_system(L);
 
   // solve
-  igl::min_quad_with_fixed_data<double> solver_data;
-  bool ret_x = min_quad_with_fixed_precompute(
-    L,Eigen::VectorXi(),Eigen::SparseMatrix<double>(),false,solver_data);
-  Eigen::VectorXd Uc,Beq;
-  Eigen::VectorXd neg_rhs = -1*rhs; //libigl solver expects a minus
-  igl::min_quad_with_fixed_solve(
-          solver_data,
-          neg_rhs,Eigen::VectorXd(),Beq,
-          Uc);
-
+  Eigen::VectorXd Uc;
+  if (dim == 2) {
+    SimplicialLDLT<SparseMatrix<double> > solver;
+    Uc = solver.compute(L).solve(rhs);
+  } else { // seems like CG performs much worse for 2D and way better for 3D
+    Eigen::VectorXd guess(uv.rows()*dim);
+    for (int i = 0; i < dim; i++) for (int j = 0; j < dim; j++) guess(uv.rows()*i + j) = uv(i,j); // flatten vector
+    ConjugateGradient<SparseMatrix<double>, Eigen::Upper> solver;
+    Uc = solver.compute(L).solveWithGuess(rhs,guess);
+  }
+  
   for (int i = 0; i < dim; i++)
     uv.col(i) = Uc.block(i*v_n,0,v_n,1);
 }
@@ -318,6 +320,7 @@ void WeightedGlobalLocal::build_linear_system(Eigen::SparseMatrix<double> &L) {
   buildRhs(At);
   Eigen::SparseMatrix<double> OldL = L;
   add_soft_constraints(L);
+  L.makeCompressed();
 }
 
 void WeightedGlobalLocal::add_soft_constraints(Eigen::SparseMatrix<double> &L) {

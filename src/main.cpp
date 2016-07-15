@@ -38,6 +38,7 @@ Eigen::MatrixXi F;
 bool first_iter = true;
 SLIMData* sData = NULL;
 Slim* slim = NULL;
+igl::Timer timer;
 
 double uv_scale_param;
 
@@ -73,7 +74,8 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int modifier){
 
 void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
   if (first_iter) {
-    igl::read_triangle_mesh("../camelhead.obj", V, F);
+    timer.start();
+    igl::read_triangle_mesh("../face_catmull.obj", V, F);
 
     sData = new SLIMData(V,F);
     check_mesh_for_issues(sData->V,sData->F, sData->M);
@@ -105,6 +107,7 @@ void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
   } else {
     slim->solve(1); // 1 iter
     viewer.data.set_uv(sData->V_o*uv_scale_param);
+    cout << "time = " << timer.getElapsedTime() << endl;
   }
 }
 
@@ -140,7 +143,7 @@ void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
 
 void deform_3d_demo_iter(igl::viewer::Viewer& viewer) {
   if (first_iter) {
-    igl::readOBJ("../cube_4k.obj", V, F);
+    igl::readOBJ("../cube_40k.obj", V, F);
 
     sData = new SLIMData(V,F);
     sData->V_o = V;
