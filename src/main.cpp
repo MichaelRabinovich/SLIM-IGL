@@ -140,7 +140,7 @@ void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
 
 void deform_3d_demo_iter(igl::viewer::Viewer& viewer) {
   if (first_iter) {
-    igl::readOBJ("../cube_40k.obj", V, F);
+    igl::readOBJ("../cube_4k.obj", V, F);
 
     sData = new SLIMData(V,F);
     sData->V_o = V;
@@ -149,7 +149,7 @@ void deform_3d_demo_iter(igl::viewer::Viewer& viewer) {
     display_3d_mesh(viewer);
     first_iter = false;
 
-    sData->slim_energy = SLIMData::CONFORMAL;
+    sData->slim_energy = SLIMData::EXP_CONFORMAL;
     sData->soft_const_p = 1e5;
     sData->exp_factor = 5.0;
     slim = new Slim(*sData);
