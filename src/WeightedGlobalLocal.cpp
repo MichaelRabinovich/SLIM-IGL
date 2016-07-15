@@ -243,7 +243,7 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
   } // if dim end
   
 }
-
+ 
 void WeightedGlobalLocal::solve_weighted_arap(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
         Eigen::MatrixXd& uv, Eigen::VectorXi& soft_b_p, Eigen::MatrixXd& soft_bc_p) {
   using namespace Eigen;
@@ -260,6 +260,7 @@ void WeightedGlobalLocal::solve_weighted_arap(const Eigen::MatrixXd& V, const Ei
     Eigen::VectorXd guess(uv.rows()*dim);
     for (int i = 0; i < dim; i++) for (int j = 0; j < dim; j++) guess(uv.rows()*i + j) = uv(i,j); // flatten vector
     ConjugateGradient<SparseMatrix<double>, Eigen::Upper> solver;
+    solver.setTolerance(1e-8);
     Uc = solver.compute(L).solveWithGuess(rhs,guess);
   }
   
