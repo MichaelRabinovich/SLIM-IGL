@@ -75,7 +75,7 @@ bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int modifier){
 void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
   if (first_iter) {
     timer.start();
-    igl::read_triangle_mesh("../face_catmull.obj", V, F);
+    igl::read_triangle_mesh("../models/face_catmull.obj", V, F);
 
     sData = new SLIMData(V,F);
     check_mesh_for_issues(sData->V,sData->F, sData->M);
@@ -114,7 +114,7 @@ void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
 void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
   if (first_iter) {
 
-    igl::read_triangle_mesh("../circle.obj", V, F);
+    igl::read_triangle_mesh("../models/circle.obj", V, F);
 
     sData = new SLIMData(V,F);
     check_mesh_for_issues(sData->V,sData->F, sData->M);
@@ -143,7 +143,7 @@ void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
 
 void deform_3d_demo_iter(igl::viewer::Viewer& viewer) {
   if (first_iter) {
-    igl::readOBJ("../cube_40k.obj", V, F);
+    igl::readOBJ("../models/cube_40k.obj", V, F);
 
     sData = new SLIMData(V,F);
     sData->V_o = V;
