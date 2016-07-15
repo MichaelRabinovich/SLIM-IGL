@@ -8,8 +8,12 @@
 #include "igl/writeOBJ.h"
 #include "igl/Timer.h"
 
+#include "igl/boundary_loop.h"
+#include "igl/map_vertices_to_circle.h"
+#include "igl/harmonic.h"
 #include <igl/serialize.h>
 #include <igl/read_triangle_mesh.h>
+#include <igl/viewer/Viewer.h>
 
 #include <stdlib.h>
 
@@ -19,41 +23,133 @@
 using namespace std;
 
 void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXd& areas);
+void param_2d_demo_iter(igl::viewer::Viewer& viewer);
+void soft_const_demo_iter(igl::viewer::Viewer& viewer);
 
 Eigen::MatrixXd V;
 Eigen::MatrixXi F;
+bool first_iter = true;
+SLIMData* sData = NULL;
+Slim* slim = NULL;
 
-const int ITER_NUM = 5;
+double uv_scale_param;
+
+enum DEMO_TYPE {
+  PARAM_2D,
+  SOFT_CONST,
+  DEFORM_3D
+};
+DEMO_TYPE demo_type;
+
+bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int modifier){
+  /*
+  if (key == '1')
+    show_uv = false;
+  else if (key == '2')
+    show_uv = true;
+
+  if (key == 'q')
+    V_uv = initial_guess;
+
+  if (show_uv)
+  {
+    viewer.data.set_mesh(V_uv,F);
+    viewer.core.align_camera_center(V_uv,F);
+  }
+  else
+  {
+    viewer.data.set_mesh(V,F);
+    viewer.core.align_camera_center(V,F);
+  }
+  */
+  if (key == '6') {
+    switch (demo_type) {
+      case PARAM_2D: {
+        param_2d_demo_iter(viewer);
+        break;
+      }
+      case SOFT_CONST: {
+        soft_const_demo_iter(viewer);
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  return false;
+}
+
+void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
+  if (first_iter) {
+    //cout << "Reading mesh " << input_mesh << endl;
+    igl::read_triangle_mesh("../camelhead.obj", V, F);
+
+    sData = new SLIMData(V,F);
+    //SLIMData sData(V,F);
+    check_mesh_for_issues(sData->V,sData->F, sData->M);
+    cout << "\tMesh is valid!" << endl;
+
+    sData->slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
+    
+    Eigen::VectorXi bnd; Eigen::MatrixXd bnd_uv;
+    igl::boundary_loop(F,bnd);
+    igl::map_vertices_to_circle(V,bnd,bnd_uv);
+
+    igl::harmonic(V,F,bnd,bnd_uv,1,sData->V_o);
+    if (count_flips(sData->V,sData->F,sData->V_o) > 0) {
+      igl::harmonic(F,bnd,bnd_uv,1,sData->V_o); // use uniform laplacian
+    }
+
+    cout << "initialized parametrization" << endl;
+    slim = new Slim(*sData);
+    slim->precompute();
+
+    uv_scale_param = 15 * (1./sqrt(sData->mesh_area));
+    viewer.data.set_mesh(V, F);
+    viewer.data.set_uv(sData->V_o*uv_scale_param);
+    viewer.data.compute_normals();
+
+    first_iter = false;
+  } else {
+    slim->solve(1); // 1 iter
+    viewer.data.set_uv(sData->V_o*uv_scale_param);
+  }
+}
+
+void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
+
+}
 
 int main(int argc, char *argv[]) {
-  if (argc < 3) {
-      cerr << "Syntax: " << argv[0] << " <input mesh> <output mesh>" << std::endl;
+
+   if (argc < 2) {
+      cerr << "Syntax: " << argv[0] << " demo_number(1 to 3)" << std::endl;
       return -1;
   }
-  const string input_mesh = argv[1]; 
-  const string output_mesh = argv[2];
 
-  cout << "Reading mesh " << input_mesh << endl;
-  igl::read_triangle_mesh(input_mesh, V, F);
-
-  SLIMData sData(V,F);
-  check_mesh_for_issues(sData.V,sData.F, sData.M);
-  cout << "\tMesh is valid!" << endl;
-
-  sData.slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
-  
-  dirichlet_on_circle(sData.V,sData.F,sData.V_o);
-  if (count_flips(sData.V,sData.F,sData.V_o) > 0) {
-      tutte_on_circle(sData.V,sData.F,sData.V_o);
+  switch (std::atoi(argv[1])) {
+    case 1: {
+      demo_type = PARAM_2D;
+      break;
+    }
+    default: {
+      cerr << "Wrong demo number - Please choose one between 1-3" << std:: endl;
+      exit(1);
+    }
   }
-  
-  cout << "initialized parametrization" << endl;
-  Slim slim(sData);
-  slim.precompute();
-  slim.solve(ITER_NUM);
 
-  cout << "Finished, saving results to " << output_mesh << endl;
-  igl::writeOBJ(output_mesh, sData.V, sData.F, Eigen::MatrixXd(), Eigen::MatrixXi(), sData.V_o, sData.F);
+  // Launch the viewer
+  igl::viewer::Viewer viewer;
+  //viewer.data.set_uv(V_uv);
+  viewer.callback_key_down = &key_down;
+
+  // Disable wireframe
+  viewer.core.show_lines = false;
+
+  // Draw checkerboard texture
+  viewer.core.show_texture = true;
+  viewer.launch();
 
   return 0;
 }

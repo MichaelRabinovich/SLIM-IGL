@@ -16,20 +16,6 @@
 
 using namespace std;
 
-void dirichlet_on_circle(const Eigen::MatrixXd& V,
-              const Eigen::MatrixXi& F,
-              Eigen::MatrixXd& uv);
-
-bool tutte_on_circle(const Eigen::MatrixXd& V,
-              const Eigen::MatrixXi& F,
-              Eigen::MatrixXd& uv);
-
-void map_vertices_to_circle_area_normalized(
-  const Eigen::MatrixXd& V,
-  const Eigen::MatrixXi& F,
-  const Eigen::VectorXi& bnd,
-  Eigen::MatrixXd& UV);
-
 int get_euler_char(const Eigen::MatrixXd& V,
               const Eigen::MatrixXi& F);
 

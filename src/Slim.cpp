@@ -31,7 +31,6 @@ void Slim::precompute() {
 
 void Slim::solve(int iter_num) {
   for (int i = 0; i < iter_num; i++) {
-    cout << "iter number " << i << endl; // todo: remove me
     slim_iter();
   }
 }

@@ -22,101 +22,6 @@
 #include <igl/covariance_scatter_matrix.h>
 #include <igl/edge_lengths.h>
 
-void map_vertices_to_circle_area_normalized(
-  const Eigen::MatrixXd& V,
-  const Eigen::MatrixXi& F,
-  const Eigen::VectorXi& bnd,
-  Eigen::MatrixXd& UV) {
-  
-  Eigen::VectorXd dblArea_orig;
-  igl::doublearea(V,F, dblArea_orig);
-  double area = dblArea_orig.sum()/2;
-  double radius = sqrt(area / (M_PI));
-
-  // Get sorted list of boundary vertices
-  std::vector<int> interior,map_ij;
-  map_ij.resize(V.rows());
-  interior.reserve(V.rows()-bnd.size());
-
-  std::vector<bool> isOnBnd(V.rows(),false);
-  for (int i = 0; i < bnd.size(); i++)
-  {
-    isOnBnd[bnd[i]] = true;
-    map_ij[bnd[i]] = i;
-  }
-
-  for (int i = 0; i < (int)isOnBnd.size(); i++)
-  {
-    if (!isOnBnd[i])
-    {
-      map_ij[i] = interior.size();
-      interior.push_back(i);
-    }
-  }
-
-  // Map boundary to unit circle
-  std::vector<double> len(bnd.size());
-  len[0] = 0.;
-
-  for (int i = 1; i < bnd.size(); i++)
-  {
-    len[i] = len[i-1] + (V.row(bnd[i-1]) - V.row(bnd[i])).norm();
-  }
-  double total_len = len[len.size()-1] + (V.row(bnd[0]) - V.row(bnd[bnd.size()-1])).norm();
-
-  UV.resize(bnd.size(),2);
-  for (int i = 0; i < bnd.size(); i++)
-  {
-    double frac = len[i] * (2. * M_PI) / total_len;
-    UV.row(map_ij[bnd[i]]) << radius*cos(frac), radius*sin(frac);
-  }
-
-}
-
-bool tutte_on_circle(const Eigen::MatrixXd& V,
-              const Eigen::MatrixXi& F,
-              Eigen::MatrixXd& uv) {
-  using namespace Eigen;
-  typedef Matrix<double,Dynamic,1> VectorXS;
-// generate boundary conditions to a circle
-
-  Eigen::SparseMatrix<double> A;
-  igl::adjacency_matrix(F,A);
-
-  Eigen::VectorXi b;
-  igl::boundary_loop(F,b);
-  Eigen::MatrixXd bc;
-  map_vertices_to_circle_area_normalized(V,F,b,bc);
-
-  
-  // sum each row 
-  Eigen::SparseVector<double> Asum;
-  igl::sum(A,1,Asum);
-  //Convert row sums into diagonal of sparse matrix
-  Eigen::SparseMatrix<double> Adiag;
-  igl::diag(Asum,Adiag);
-  // Build uniform laplacian
-  Eigen::SparseMatrix<double> Q;
-  Q = Adiag - A;
-  uv.resize(V.rows(),bc.cols());
-
-  const Eigen::VectorXd B = Eigen::VectorXd::Zero(V.rows(),1);
-  igl::min_quad_with_fixed_data<double> data;
-  igl::min_quad_with_fixed_precompute(Q,b,Eigen::SparseMatrix<double>(),true,data);
-  for(int w = 0;w<bc.cols();w++)
-  {
-    const Eigen::VectorXd bcw = bc.col(w);
-    Eigen::VectorXd Ww;
-    if(!igl::min_quad_with_fixed_solve(data,B,bcw,Eigen::VectorXd(),Ww))
-    {
-      return false;
-    }
-    uv.col(w) = Ww;
-  }
-  
-  return true;
-}
-
 int get_euler_char(const Eigen::MatrixXd& V,
               const Eigen::MatrixXi& F) {
 
@@ -159,37 +64,6 @@ int count_flips(const Eigen::MatrixXd& V,
 
   
   return flip_idx.size();
-}
-
-void dirichlet_on_circle(const Eigen::MatrixXd& V,
-              const Eigen::MatrixXi& F,
-              Eigen::MatrixXd& uv) {
-  using namespace Eigen;
-  typedef Matrix<double,Dynamic,1> VectorXS;
-  
-  // init (dirichlet)
-  Eigen::VectorXi b;
-  igl::boundary_loop(F,b);
-  Eigen::MatrixXd bc;
-  map_vertices_to_circle_area_normalized(V,F,b,bc);
-  
-  //igl::harmonic(V,F,bnd,bnd_uv,1,uv);
-
-  SparseMatrix<double> L,M,Mi;
-  igl::cotmatrix(V,F,L);
-  SparseMatrix<double> Q = -L;
-  uv.resize(V.rows(),bc.cols());
-
-  const VectorXS B = VectorXS::Zero(V.rows(),1);
-  igl::min_quad_with_fixed_data<double> data;
-  igl::min_quad_with_fixed_precompute(Q,b,SparseMatrix<double>(),true,data);
-  
-  for(int w = 0;w<bc.cols();w++) {
-    const VectorXS bcw = bc.col(w);
-    VectorXS Ww;
-    if(!igl::min_quad_with_fixed_solve(data,B,bcw,VectorXS(),Ww)) return;
-    uv.col(w) = Ww;
-  }
 }
 
 void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
