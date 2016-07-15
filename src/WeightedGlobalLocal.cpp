@@ -187,10 +187,6 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
 
           m_sing_new << sqrt(s1_g/(2*(s1-s1_min))), sqrt(s2_g/(2*(s2-s2_min))), sqrt(s3_g/(2*(s3-s3_min)));
 
-          if (abs(s1-closest_s) < eps) m_sing_new(0) = closest_s;
-          if (abs(s2-closest_s) < eps) m_sing_new(1) = closest_s;
-          if (abs(s3-closest_s) < eps) m_sing_new(2) = closest_s;
-
           // change local step
           closest_sing_vec << s1_min,s2_min,s3_min;
           ri = ui*closest_sing_vec.asDiagonal()*vi.transpose();
@@ -217,10 +213,6 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
           s3_g *= exp_thing*exp_f;
           
           m_sing_new << sqrt(s1_g/(2*(s1-s1_min))), sqrt(s2_g/(2*(s2-s2_min))), sqrt(s3_g/(2*(s3-s3_min)));
-
-          if (abs(s1-closest_s) < eps) m_sing_new(0) = closest_s;
-          if (abs(s2-closest_s) < eps) m_sing_new(1) = closest_s;
-          if (abs(s3-closest_s) < eps) m_sing_new(2) = closest_s;
 
           // change local step
           closest_sing_vec << s1_min,s2_min,s3_min;
