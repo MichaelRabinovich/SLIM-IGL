@@ -43,5 +43,6 @@ void Slim::slim_iter() {
 
   double old_energy = m_state.energy;
 
-  m_state.energy = linesearch.compute(m_state.V,m_state.F, m_state.V_o, dest_res, wGlobalLocal, m_state.energy*m_state.mesh_area)/m_state.mesh_area;
+  m_state.energy = linesearch.compute(m_state.V,m_state.F, m_state.V_o, dest_res, wGlobalLocal,
+                                         m_state.energy*m_state.mesh_area)/m_state.mesh_area;
 }

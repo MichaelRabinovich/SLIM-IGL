@@ -11,7 +11,8 @@ SLIMData::SLIMData(Eigen::MatrixXd& V_in, Eigen::MatrixXi& F_in) : V(V_in), F(F_
   f_num = F.rows();
   igl::doublearea(V,F,M); M /= 2.;
   mesh_area = M.sum();
-  mesh_improvement_3d = false;
+  mesh_improvement_3d = false; // whether to use a jacobian derived from a real mesh or an abstract regular mesh (used for mesh improvement)
+  exp_factor = 1.0; // param used only for exponential energies (e.g exponential symmetric dirichlet)
 }
 
 void SLIMData::save(const std::string filename) {

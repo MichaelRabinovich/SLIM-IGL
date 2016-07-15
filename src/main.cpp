@@ -29,7 +29,9 @@ void param_2d_demo_iter(igl::viewer::Viewer& viewer);
 void set_soft_constraint_for_circle();
 void soft_const_demo_iter(igl::viewer::Viewer& viewer);
 void deform_3d_demo_iter(igl::viewer::Viewer& viewer);
+void set_cube_corner_constraints();
 void display_3d_mesh(igl::viewer::Viewer& viewer);
+void int_set_to_eigen_vector(const std::set<int>& int_set, Eigen::VectorXi& vec);
 
 Eigen::MatrixXd V;
 Eigen::MatrixXi F;
@@ -120,11 +122,9 @@ void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
     set_soft_constraint_for_circle();
 
     sData->slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
-
     sData->soft_const_p = 1e5;
     slim = new Slim(*sData);
     slim->precompute();
-
 
     viewer.data.set_mesh(V, F);
     viewer.data.compute_normals();
@@ -145,11 +145,18 @@ void deform_3d_demo_iter(igl::viewer::Viewer& viewer) {
     sData = new SLIMData(V,F);
     sData->V_o = V;
 
-    cout << "V.rows() = " << V.rows() << " F.rows() = " << F.rows() << endl;
+    set_cube_corner_constraints();
     display_3d_mesh(viewer);
     first_iter = false;
-  } else {
 
+    sData->slim_energy = SLIMData::EXP_CONFORMAL;
+    sData->soft_const_p = 1e5;
+    sData->exp_factor = 5.0;
+    slim = new Slim(*sData);
+    slim->precompute();
+  } else {
+    slim->solve(1); // 1 iter
+    display_3d_mesh(viewer);
   }
 }
 
@@ -185,7 +192,6 @@ void display_3d_mesh(igl::viewer::Viewer& viewer) {
     F_temp.row(i*4+2) << (i*4)+3, (i*4)+2, (i*4)+0;
     F_temp.row(i*4+3) << (i*4)+1, (i*4)+2, (i*4)+3;
   }
-  cout << "V_temp.rows() = " << V_temp.rows() << endl;
   viewer.data.set_mesh(V_temp,F_temp);
   viewer.data.set_face_based(true);
   viewer.core.show_lines = true;
@@ -223,7 +229,6 @@ int main(int argc, char *argv[]) {
 
   // Launch the viewer
   igl::viewer::Viewer viewer;
-  //viewer.data.set_uv(V_uv);
   viewer.callback_key_down = &key_down;
 
   // Disable wireframe
@@ -275,14 +280,10 @@ void set_soft_constraint_for_circle() {
     sData->bc.resize(sData->b.rows(),2);
 
     int c_idx = 0;
-    cout << "consts num = " << sData->b.rows() << endl;
     for (int i = B_STEPS; i < bnd.rows(); i+=B_STEPS) {
-        cout << "i = " << i << " bnd(i) = " << bnd(i) << " uv = " << sData->V_o.row(bnd(i)) << endl;
         sData->b(c_idx) = bnd(i);
-        //sData->bc.row(c_idx) << sData->V_o(bnd(i),0), 0.1*c_idx*(sData->V_o(bnd(i),1));
         c_idx++;
     }
-    cout << "bc.rows() = " << sData->bc.rows() << endl; //exit(1);
     
     sData->bc.row(0) = sData->V_o.row(sData->b(0)); // keep it there for now
     sData->bc.row(1) = sData->V_o.row(sData->b(2));
@@ -297,4 +298,90 @@ void set_soft_constraint_for_circle() {
     sData->bc.row(3) << sData->V_o(sData->b(3),0), 0.05;
     sData->bc.row(1) << sData->V_o(sData->b(1),0), -0.15;
     sData->bc.row(5) << sData->V_o(sData->b(5),0), +0.15;
+}
+
+void set_cube_corner_constraints() {
+  double min_x,max_x,min_y,max_y,min_z,max_z;
+  min_x = sData->V.col(0).minCoeff(); max_x = sData->V.col(0).maxCoeff();
+  min_y = sData->V.col(1).minCoeff(); max_y = sData->V.col(1).maxCoeff();
+  min_z = sData->V.col(2).minCoeff(); max_z = sData->V.col(2).maxCoeff();
+
+  
+  // get all cube corners
+  sData->b.resize(8,1); sData->bc.resize(8,3);
+  int x;
+  for (int i = 0; i < sData->V.rows(); i++) {
+    if (sData->V.row(i) == Eigen::RowVector3d(min_x,min_y,min_z)) sData->b(0) = i;
+    if (sData->V.row(i) == Eigen::RowVector3d(min_x,min_y,max_z)) sData->b(1) = i;
+    if (sData->V.row(i) == Eigen::RowVector3d(min_x,max_y,min_z)) sData->b(2) = i;
+    if (sData->V.row(i) == Eigen::RowVector3d(min_x,max_y,max_z)) sData->b(3) = i;
+    if (sData->V.row(i) == Eigen::RowVector3d(max_x,min_y,min_z)) sData->b(4) = i;
+    if (sData->V.row(i) == Eigen::RowVector3d(max_x,max_y,min_z)) sData->b(5) = i;
+    if (sData->V.row(i) == Eigen::RowVector3d(max_x,min_y,max_z)) sData->b(6) = i;
+    if (sData->V.row(i) == Eigen::RowVector3d(max_x,max_y,max_z)) sData->b(7) = i;
+  }
+  
+  // get all cube edges
+  
+  std::set<int> cube_edge1; Eigen::VectorXi cube_edge1_vec;
+  for (int i = 0; i < sData->V.rows(); i++) {
+    if ((sData->V(i,0) == min_x && sData->V(i,1) == min_y)) {
+      cube_edge1.insert(i);
+    }
+  }
+  Eigen::VectorXi edge1;
+  int_set_to_eigen_vector(cube_edge1, edge1);
+
+  std::set<int> cube_edge2; Eigen::VectorXi edge2;
+  for (int i = 0; i < sData->V.rows(); i++) {
+    if ((sData->V(i,0) == max_x && sData->V(i,1) == max_y)) {
+      cube_edge2.insert(i);
+    }
+  }
+  int_set_to_eigen_vector(cube_edge2, edge2);
+  sData->b = igl::cat(1,edge1,edge2);
+  
+  std::set<int> cube_edge3; Eigen::VectorXi edge3;
+  for (int i = 0; i < sData->V.rows(); i++) {
+    if ((sData->V(i,0) == max_x && sData->V(i,1) == min_y)) {
+      cube_edge3.insert(i);
+    }
+  }
+  int_set_to_eigen_vector(cube_edge3, edge3);
+  sData->b = igl::cat(1,sData->b,edge3);
+
+  std::set<int> cube_edge4; Eigen::VectorXi edge4;
+  for (int i = 0; i < sData->V.rows(); i++) {
+    if ((sData->V(i,0) == min_x && sData->V(i,1) == max_y)) {
+      cube_edge4.insert(i);
+    }
+  }
+  int_set_to_eigen_vector(cube_edge4, edge4);
+  sData->b = igl::cat(1,sData->b,edge4);
+
+  sData->bc.resize(sData->b.rows(),3);
+  Eigen::Matrix3d m; m = Eigen::AngleAxisd(0.3 * M_PI, Eigen::Vector3d(1./sqrt(2.),1./sqrt(2.),0.)/*Eigen::Vector3d::UnitX()*/);
+  int i = 0;
+  for (; i < cube_edge1.size(); i++) {
+    Eigen::RowVector3d edge_rot_center(min_x,min_y,(min_z+max_z)/2.);
+    sData->bc.row(i) = (sData->V.row(sData->b(i)) - edge_rot_center) * m + edge_rot_center;
+  }
+  for (; i < cube_edge1.size() + cube_edge2.size(); i++) {
+    Eigen::RowVector3d edge_rot_center(max_x,max_y,(min_z+max_z)/2.);
+    sData->bc.row(i) = (sData->V.row(sData->b(i)) - edge_rot_center) * m.transpose() + edge_rot_center;
+  }
+  for (; i < cube_edge1.size() + cube_edge2.size() + cube_edge3.size(); i++) {
+    sData->bc.row(i) = 0.75*sData->V.row(sData->b(i));
+  }
+  for (; i < sData->b.rows(); i++) {
+    sData->bc.row(i) = 0.75*sData->V.row(sData->b(i));
+  }
+  //sData->energy = WArap_p->compute_energy(sData->V,sData->F,sData->V_o);
+}
+
+void int_set_to_eigen_vector(const std::set<int>& int_set, Eigen::VectorXi& vec) {
+  vec.resize(int_set.size()); int idx = 0;
+  for(auto f : int_set) {
+      vec(idx) = f; idx++;
+    }
 }
