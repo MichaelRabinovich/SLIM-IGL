@@ -7,7 +7,7 @@
 #include <set>
 #include <vector>
 
-#include "Energy.h"
+#include "WeightedGlobalLocal.h"
 #include "SLIMData.h"
 
 class Linesearch {
@@ -20,7 +20,7 @@ public:
     const Eigen::MatrixXi& F,
     Eigen::MatrixXd& cur_uv,
     Eigen::MatrixXd& dst_uv,
-    Energy* energy,
+    WeightedGlobalLocal* energy,
     double cur_energy = -1);
 
   double compute_max_step_from_singularities(const Eigen::MatrixXd& uv,
@@ -30,7 +30,7 @@ public:
 private:
   double line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
                               Eigen::MatrixXd& uv, const Eigen::MatrixXd& d,
-                              double step_size, Energy* energy, double cur_energy);
+                              double step_size, WeightedGlobalLocal* energy, double cur_energy);
 
   double get_min_pos_root_2D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
             Eigen::MatrixXd& direc, int f);

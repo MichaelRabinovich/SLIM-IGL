@@ -140,7 +140,7 @@ void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
 
 void deform_3d_demo_iter(igl::viewer::Viewer& viewer) {
   if (first_iter) {
-    igl::readOBJ("../cube_4k.obj", V, F);
+    igl::readOBJ("../cube_40k.obj", V, F);
 
     sData = new SLIMData(V,F);
     sData->V_o = V;
@@ -149,7 +149,7 @@ void deform_3d_demo_iter(igl::viewer::Viewer& viewer) {
     display_3d_mesh(viewer);
     first_iter = false;
 
-    sData->slim_energy = SLIMData::EXP_CONFORMAL;
+    sData->slim_energy = SLIMData::CONFORMAL;
     sData->soft_const_p = 1e5;
     sData->exp_factor = 5.0;
     slim = new Slim(*sData);
@@ -195,12 +195,6 @@ void display_3d_mesh(igl::viewer::Viewer& viewer) {
   viewer.data.set_mesh(V_temp,F_temp);
   viewer.data.set_face_based(true);
   viewer.core.show_lines = true;
-}
-
-void get_mesh_for_igl_viewer(Eigen::MatrixXd& V_temp, Eigen::MatrixXi& F_temp) {
-  using namespace Eigen;
-
-
 }
 
 int main(int argc, char *argv[]) {
@@ -273,8 +267,7 @@ void set_soft_constraint_for_circle() {
 
     Eigen::VectorXi bnd;
     igl::boundary_loop(sData->F,bnd);
-    const int B_STEPS = 22;
-    cout << "bnd.rows() = " << bnd.rows() << endl;
+    const int B_STEPS = 22; // constraint every B_STEPS vertices of the boundary
     
     sData->b.resize(bnd.rows()/B_STEPS - 1);
     sData->bc.resize(sData->b.rows(),2);
@@ -322,7 +315,6 @@ void set_cube_corner_constraints() {
   }
   
   // get all cube edges
-  
   std::set<int> cube_edge1; Eigen::VectorXi cube_edge1_vec;
   for (int i = 0; i < sData->V.rows(); i++) {
     if ((sData->V(i,0) == min_x && sData->V(i,1) == min_y)) {
@@ -376,7 +368,6 @@ void set_cube_corner_constraints() {
   for (; i < sData->b.rows(); i++) {
     sData->bc.row(i) = 0.75*sData->V.row(sData->b(i));
   }
-  //sData->energy = WArap_p->compute_energy(sData->V,sData->F,sData->V_o);
 }
 
 void int_set_to_eigen_vector(const std::set<int>& int_set, Eigen::VectorXi& vec) {

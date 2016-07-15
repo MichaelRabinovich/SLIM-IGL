@@ -9,7 +9,7 @@ Linesearch::Linesearch (SLIMData& param_state) : m_state(param_state) {
 }
 
 double Linesearch::compute( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
-    Eigen::MatrixXd& uv, Eigen::MatrixXd& dst_uv, Energy* energy, double cur_energy) {
+    Eigen::MatrixXd& uv, Eigen::MatrixXd& dst_uv, WeightedGlobalLocal* energy, double cur_energy) {
 
     Eigen::MatrixXd d = dst_uv - uv;
 
@@ -21,7 +21,7 @@ double Linesearch::compute( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
 
 double Linesearch::line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
                               Eigen::MatrixXd& uv, const Eigen::MatrixXd& d, 
-                              double step_size, Energy* energy, double cur_energy) {
+                              double step_size, WeightedGlobalLocal* energy, double cur_energy) {
   double old_energy;
   if (cur_energy > 0) {
     old_energy = cur_energy;  

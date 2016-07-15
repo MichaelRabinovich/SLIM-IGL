@@ -7,13 +7,12 @@
 #include <set>
 #include <vector>
 
-#include "Energy.h"
 #include "SLIMData.h"
 #include "geometric_utils.h"
 
 #include "igl/arap.h"
 
-class WeightedGlobalLocal : public Energy {
+class WeightedGlobalLocal {
 
 public:
   WeightedGlobalLocal(SLIMData& state, bool remeshing = false);
