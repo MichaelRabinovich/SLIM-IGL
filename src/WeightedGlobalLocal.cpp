@@ -5,7 +5,6 @@
 #include "igl/doublearea.h"
 #include "igl/grad.h"
 #include "igl/local_basis.h"
-#include "igl/min_quad_with_fixed.h"
 
 #include <Eigen/IterativeLinearSolvers>
 #include <Eigen/Sparse>
@@ -15,7 +14,7 @@
 
 using namespace Eigen;
 
-WeightedGlobalLocal::WeightedGlobalLocal(SLIMData& state, bool remeshing) : 
+WeightedGlobalLocal::WeightedGlobalLocal(SLIMData& state, bool remeshing) :
                                   m_state(state) {
 }
 
@@ -65,32 +64,32 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
     switch(m_state.slim_energy) {
     case SLIMData::ARAP: {
       m_sing_new << 1,1;
-      break; 
+      break;
     } case SLIMData::SYMMETRIC_DIRICHLET: {
-        double s1_g = 2* (s1-pow(s1,-3)); 
+        double s1_g = 2* (s1-pow(s1,-3));
         double s2_g = 2 * (s2-pow(s2,-3));
         m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));
         break;
     } case SLIMData::LOG_ARAP: {
-        double s1_g = 2 * (log(s1)/s1); 
-        double s2_g = 2 * (log(s2)/s2); 
+        double s1_g = 2 * (log(s1)/s1);
+        double s2_g = 2 * (log(s2)/s2);
         m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));
         break;
     } case SLIMData::CONFORMAL: {
         double s1_g = 1/(2*s2) - s2/(2*pow(s1,2));
         double s2_g = 1/(2*s1) - s1/(2*pow(s2,2));
-        
+
         double geo_avg = sqrt(s1*s2);
         double s1_min = geo_avg; double s2_min = geo_avg;
-        
+
         m_sing_new << sqrt(s1_g/(2*(s1-s1_min))), sqrt(s2_g/(2*(s2-s2_min)));
-   
+
         // change local step
         closest_sing_vec << s1_min,s2_min;
         ri = ui*closest_sing_vec.asDiagonal()*vi.transpose();
         break;
     } case SLIMData::EXP_CONFORMAL: {
-        double s1_g = 2* (s1-pow(s1,-3)); 
+        double s1_g = 2* (s1-pow(s1,-3));
         double s2_g = 2 * (s2-pow(s2,-3));
 
         double geo_avg = sqrt(s1*s2);
@@ -105,7 +104,7 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
         m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));
         break;
     } case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
-        double s1_g = 2* (s1-pow(s1,-3)); 
+        double s1_g = 2* (s1-pow(s1,-3));
         double s2_g = 2 * (s2-pow(s2,-3));
 
         double in_exp = exp_f*(pow(s1,2)+pow(s1,-2)+pow(s2,2)+pow(s2,-2));
@@ -135,7 +134,7 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
       ji(0,0) = Ji(i,0); ji(0,1) = Ji(i,1); ji(0,2) = Ji(i,2);
       ji(1,0) = Ji(i,3); ji(1,1) = Ji(i,4); ji(1,2) = Ji(i,5);
       ji(2,0) = Ji(i,6); ji(2,1) = Ji(i,7); ji(2,2) = Ji(i,8);
-    
+
       Mat3 ri,ti,ui,vi;
       Vec3 sing;
       igl::polar_svd(ji,ri,ti,ui,sing,vi);
@@ -148,22 +147,22 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
           m_sing_new << 1,1,1;
           break;
         } case SLIMData::LOG_ARAP: {
-            double s1_g = 2 * (log(s1)/s1); 
-            double s2_g = 2 * (log(s2)/s2); 
-            double s3_g = 2 * (log(s3)/s3); 
+            double s1_g = 2 * (log(s1)/s1);
+            double s2_g = 2 * (log(s2)/s2);
+            double s3_g = 2 * (log(s3)/s3);
             m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1))), sqrt(s3_g/(2*(s3-1)));
             break;
           } case SLIMData::SYMMETRIC_DIRICHLET: {
-            double s1_g = 2* (s1-pow(s1,-3)); 
+            double s1_g = 2* (s1-pow(s1,-3));
             double s2_g = 2 * (s2-pow(s2,-3));
             double s3_g = 2 * (s3-pow(s3,-3));
             m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1))), sqrt(s3_g/(2*(s3-1)));
             break;
           } case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
-           double s1_g = 2* (s1-pow(s1,-3)); 
+           double s1_g = 2* (s1-pow(s1,-3));
           double s2_g = 2 * (s2-pow(s2,-3));
           double s3_g = 2 * (s3-pow(s3,-3));
-          m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1))), sqrt(s3_g/(2*(s3-1)));        
+          m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1))), sqrt(s3_g/(2*(s3-1)));
 
           double in_exp = exp_f*(pow(s1,2)+pow(s1,-2)+pow(s2,2)+pow(s2,-2)+pow(s3,2)+pow(s3,-2));
           double exp_thing = exp(in_exp);
@@ -182,7 +181,7 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
           double s1_g = (-2*s2*s3*(pow(s2,2)+pow(s3,2)-2*pow(s1,2)) ) / common_div;
           double s2_g = (-2*s1*s3*(pow(s1,2)+pow(s3,2)-2*pow(s2,2)) ) / common_div;
           double s3_g = (-2*s1*s2*(pow(s1,2)+pow(s2,2)-2*pow(s3,2)) ) / common_div;
-          
+
           double closest_s = sqrt(pow(s1,2)+pow(s3,2)) / sqrt_2;
           double s1_min = closest_s; double s2_min = closest_s; double s3_min = closest_s;
 
@@ -205,14 +204,14 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
 
           double in_exp = exp_f*( (pow(s1,2)+pow(s2,2)+pow(s3,2))/ (3*pow((s1*s2*s3),2./3)) ); ;
           double exp_thing = exp(in_exp);
-          
+
           double closest_s = sqrt(pow(s1,2)+pow(s3,2)) / sqrt_2;
           double s1_min = closest_s; double s2_min = closest_s; double s3_min = closest_s;
 
           s1_g *= exp_thing*exp_f;
           s2_g *= exp_thing*exp_f;
           s3_g *= exp_thing*exp_f;
-          
+
           m_sing_new << sqrt(s1_g/(2*(s1-s1_min))), sqrt(s2_g/(2*(s2-s2_min))), sqrt(s3_g/(2*(s3-s3_min)));
 
           // change local step
@@ -221,7 +220,7 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
         }
       }
       if (abs(s1-1) < eps) m_sing_new(0) = 1; if (abs(s2-1) < eps) m_sing_new(1) = 1; if (abs(s3-1) < eps) m_sing_new(2) = 1;
-      Mat3 mat_W;    
+      Mat3 mat_W;
       mat_W = ui*m_sing_new.asDiagonal()*ui.transpose();
 
       W_11(i) = mat_W(0,0);
@@ -241,9 +240,9 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
     } // for loop end
 
   } // if dim end
-  
+
 }
- 
+
 void WeightedGlobalLocal::solve_weighted_arap(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
         Eigen::MatrixXd& uv, Eigen::VectorXi& soft_b_p, Eigen::MatrixXd& soft_bc_p) {
   using namespace Eigen;
@@ -263,7 +262,7 @@ void WeightedGlobalLocal::solve_weighted_arap(const Eigen::MatrixXd& V, const Ei
     solver.setTolerance(1e-8);
     Uc = solver.compute(L).solveWithGuess(rhs,guess);
   }
-  
+
   for (int i = 0; i < dim; i++)
     uv.col(i) = Uc.block(i*v_n,0,v_n,1);
 }
@@ -295,8 +294,8 @@ void WeightedGlobalLocal::pre_calc() {
 
     // flattened weight matrix
     M.resize(dim*dim*f_n);
-    for (int i = 0; i < dim*dim; i++) 
-      for (int j = 0; j < f_n; j++) 
+    for (int i = 0; i < dim*dim; i++)
+      for (int j = 0; j < f_n; j++)
         M(i*f_n + j) = m_state.M(j);
 
     first_solve = true;
@@ -331,19 +330,19 @@ void WeightedGlobalLocal::add_soft_constraints(Eigen::SparseMatrix<double> &L) {
       int v_idx = m_state.b(i);
       rhs(d*v_n + v_idx) += m_state.soft_const_p * m_state.bc(i,d); // rhs
       L.coeffRef(d*v_n + v_idx, d*v_n + v_idx) += m_state.soft_const_p; // diagonal of matrix
-    }  
+    }
   }
 }
 
 double WeightedGlobalLocal::compute_energy(const Eigen::MatrixXd& V,
-                                                       const Eigen::MatrixXi& F,  
+                                                       const Eigen::MatrixXi& F,
                                                        Eigen::MatrixXd& V_o) {
   compute_jacobians(V_o);
   return compute_energy_with_jacobians(V,F, Ji, V_o,m_state.M) + compute_soft_const_energy(V,F,V_o);
 }
 
 double WeightedGlobalLocal::compute_soft_const_energy(const Eigen::MatrixXd& V,
-                                                       const Eigen::MatrixXi& F,  
+                                                       const Eigen::MatrixXi& F,
                                                        Eigen::MatrixXd& V_o) {
   double e = 0;
   for (int i = 0; i < m_state.b.rows(); i++) {
@@ -361,7 +360,7 @@ double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd&
     for (int i = 0; i < f_n; i++) {
       ji(0,0) = Ji(i,0); ji(0,1) = Ji(i,1);
       ji(1,0) = Ji(i,2); ji(1,1) = Ji(i,3);
-      
+
       typedef Eigen::Matrix<double,2,2> Mat2;
       typedef Eigen::Matrix<double,2,1> Vec2;
       Mat2 ri,ti,ui,vi; Vec2 sing;
@@ -395,7 +394,7 @@ double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd&
         }
 
       }
-    
+
     }
   } else {
     Eigen::Matrix<double,3,3> ji;
@@ -403,7 +402,7 @@ double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd&
       ji(0,0) = Ji(i,0); ji(0,1) = Ji(i,1); ji(0,2) = Ji(i,2);
       ji(1,0) = Ji(i,3); ji(1,1) = Ji(i,4); ji(1,2) = Ji(i,5);
       ji(2,0) = Ji(i,6); ji(2,1) = Ji(i,7); ji(2,2) = Ji(i,8);
-      
+
       typedef Eigen::Matrix<double,3,3> Mat3;
       typedef Eigen::Matrix<double,3,1> Vec3;
       Mat3 ri,ti,ui,vi; Vec3 sing;
@@ -460,7 +459,7 @@ void WeightedGlobalLocal::buildA(Eigen::SparseMatrix<double>& A) {
 
           IJV.push_back(Triplet<double>(dx_r,dx_c, val*W_11(dx_r)));
           IJV.push_back(Triplet<double>(dx_r,v_n + dx_c, val*W_12(dx_r)));
-          
+
           IJV.push_back(Triplet<double>(2*f_n+dx_r,dx_c, val*W_21(dx_r)));
           IJV.push_back(Triplet<double>(2*f_n+dx_r,v_n + dx_c, val*W_22(dx_r)));
       }
@@ -474,7 +473,7 @@ void WeightedGlobalLocal::buildA(Eigen::SparseMatrix<double>& A) {
 
         IJV.push_back(Triplet<double>(f_n+dy_r,dy_c, val*W_11(dy_r)));
         IJV.push_back(Triplet<double>(f_n+dy_r,v_n + dy_c, val*W_12(dy_r)));
-        
+
         IJV.push_back(Triplet<double>(3*f_n+dy_r,dy_c, val*W_21(dy_r)));
         IJV.push_back(Triplet<double>(3*f_n+dy_r,v_n + dy_c, val*W_22(dy_r)));
       }
@@ -510,7 +509,7 @@ void WeightedGlobalLocal::buildA(Eigen::SparseMatrix<double>& A) {
          IJV.push_back(Triplet<double>(6*f_n+dx_r,2*v_n + dx_c, val*W_33(dx_r)));
       }
     }
-    
+
     for (int k = 0; k < Dy.outerSize(); k++) {
       for (SparseMatrix<double>::InnerIterator it(Dy,k); it; ++it) {
          int dy_r = it.row();
@@ -530,7 +529,7 @@ void WeightedGlobalLocal::buildA(Eigen::SparseMatrix<double>& A) {
          IJV.push_back(Triplet<double>(7*f_n+dy_r,2*v_n + dy_c, val*W_33(dy_r)));
       }
     }
-    
+
     for (int k = 0; k < Dz.outerSize(); k++) {
       for (SparseMatrix<double>::InnerIterator it(Dz,k); it; ++it) {
          int dz_r = it.row();
@@ -566,7 +565,7 @@ void WeightedGlobalLocal::buildRhs(const Eigen::SparseMatrix<double>& At) {
       f_rhs(i+1*f_n) = W_11(i) * Ri(i,2) + W_12(i)*Ri(i,3);
       f_rhs(i+2*f_n) = W_21(i) * Ri(i,0) + W_22(i)*Ri(i,1);
       f_rhs(i+3*f_n) = W_21(i) * Ri(i,2) + W_22(i)*Ri(i,3);
-    }  
+    }
   } else {
     /*b = [W11*R11 + W12*R21 + W13*R31;
          W11*R12 + W12*R22 + W13*R32;

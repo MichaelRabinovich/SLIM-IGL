@@ -9,7 +9,6 @@
 #include <igl/cotmatrix.h>
 #include <igl/edge_lengths.h>
 #include <igl/local_basis.h>
-#include <igl/min_quad_with_fixed.h>
 #include <igl/readOBJ.h>
 #include <igl/repdiag.h>
 #include <igl/vector_area_matrix.h>
@@ -17,10 +16,10 @@
 
 using namespace std;
 
-Slim::Slim(SLIMData& m_state) : 
+Slim::Slim(SLIMData& m_state) :
       m_state(m_state), wGlobalLocal(NULL) {
   assert (m_state.F.cols() == 3);
-  
+
   wGlobalLocal = new WeightedGlobalLocal(m_state);
 }
 
