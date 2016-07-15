@@ -24,6 +24,7 @@ using namespace std;
 
 void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXd& areas);
 void param_2d_demo_iter(igl::viewer::Viewer& viewer);
+void set_soft_constraint_for_circle();
 void soft_const_demo_iter(igl::viewer::Viewer& viewer);
 
 Eigen::MatrixXd V;
@@ -106,64 +107,26 @@ void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
     sData = new SLIMData(V,F);
     check_mesh_for_issues(sData->V,sData->F, sData->M);
     cout << "\tMesh is valid!" << endl;
+    sData->V_o = V.block(0,0,V.rows(),2);
+
+    set_soft_constraint_for_circle();
 
     sData->slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
-    sData->V_o.resize(sData->v_num, 2);
-    sData->V_o.col(0) = sData->V.col(0);
-    sData->V_o.col(1) = sData->V.col(1);
-
-    Eigen::VectorXi bnd;
-    igl::boundary_loop(sData->F,bnd);
-    const int B_STEPS = 22;
-    cout << "bnd.rows() = " << bnd.rows() << endl;
-    
-    sData->b.resize(bnd.rows()/B_STEPS - 1);
-    sData->bc.resize(sData->b.rows(),2);
-
-    int c_idx = 0;
-    cout << "consts num = " << sData->b.rows() << endl;
-    for (int i = B_STEPS; i < bnd.rows(); i+=B_STEPS) {
-        cout << "i = " << i << " bnd(i) = " << bnd(i) << " uv = " << sData->V_o.row(bnd(i)) << endl;
-        sData->b(c_idx) = bnd(i);
-        //sData->bc.row(c_idx) << sData->V_o(bnd(i),0), 0.1*c_idx*(sData->V_o(bnd(i),1));
-        c_idx++;
-    }
-    cout << "bc.rows() = " << sData->bc.rows() << endl; //exit(1);
-    
-    sData->bc.row(0) = sData->V_o.row(sData->b(0)); // keep it there for now
-    sData->bc.row(1) = sData->V_o.row(sData->b(2));
-    sData->bc.row(2) = sData->V_o.row(sData->b(3));
-    sData->bc.row(3) = sData->V_o.row(sData->b(4));
-    sData->bc.row(4) = sData->V_o.row(sData->b(5));
-    //sData->bc.row(6) = sData->V_o.row(sData->b(6));
-    //sData->bc.row(7) = sData->V_o.row(sData->b(7));
-
-    sData->bc.row(0) << sData->V_o(sData->b(0),0), 0;
-    sData->bc.row(4) << sData->V_o(sData->b(4),0), 0;
-    sData->bc.row(2) << sData->V_o(sData->b(2),0), 0.1;
-    sData->bc.row(3) << sData->V_o(sData->b(3),0), 0.05;
-    sData->bc.row(1) << sData->V_o(sData->b(1),0), -0.15;
-    sData->bc.row(5) << sData->V_o(sData->b(5),0), +0.15;
-    //sData->bc.row(2) << sData->V_o(sData->b(2),0), -0.1;
-    /*
-    cout << "sData->b = " << sData->b << endl;
-    cout << "sData->bc = " << sData->bc << endl;*/
-    viewer.data.set_mesh(V, F);
-    viewer.data.compute_normals();
-    viewer.core.show_lines = true;
 
     sData->soft_const_p = 1e5;
     slim = new Slim(*sData);
     slim->precompute();
 
+
+    viewer.data.set_mesh(V, F);
+    viewer.data.compute_normals();
+    viewer.core.show_lines = true;
+
     first_iter = false;
 
   } else {
-    cout << "here" << endl;
-    Eigen::MatrixXd oldV = sData->V_o;
     slim->solve(1); // 1 iter
     viewer.data.set_mesh(sData->V_o, F);
-    cout << "change between V is " << (sData->V_o - oldV).norm() << endl;
   }
 }
 
@@ -229,4 +192,39 @@ void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::Vector
       cout << "Error! Input has zero area faces" << endl; exit(1);
     }
   }
+}
+
+void set_soft_constraint_for_circle() {
+
+    Eigen::VectorXi bnd;
+    igl::boundary_loop(sData->F,bnd);
+    const int B_STEPS = 22;
+    cout << "bnd.rows() = " << bnd.rows() << endl;
+    
+    sData->b.resize(bnd.rows()/B_STEPS - 1);
+    sData->bc.resize(sData->b.rows(),2);
+
+    int c_idx = 0;
+    cout << "consts num = " << sData->b.rows() << endl;
+    for (int i = B_STEPS; i < bnd.rows(); i+=B_STEPS) {
+        cout << "i = " << i << " bnd(i) = " << bnd(i) << " uv = " << sData->V_o.row(bnd(i)) << endl;
+        sData->b(c_idx) = bnd(i);
+        //sData->bc.row(c_idx) << sData->V_o(bnd(i),0), 0.1*c_idx*(sData->V_o(bnd(i),1));
+        c_idx++;
+    }
+    cout << "bc.rows() = " << sData->bc.rows() << endl; //exit(1);
+    
+    sData->bc.row(0) = sData->V_o.row(sData->b(0)); // keep it there for now
+    sData->bc.row(1) = sData->V_o.row(sData->b(2));
+    sData->bc.row(2) = sData->V_o.row(sData->b(3));
+    sData->bc.row(3) = sData->V_o.row(sData->b(4));
+    sData->bc.row(4) = sData->V_o.row(sData->b(5));
+
+
+    sData->bc.row(0) << sData->V_o(sData->b(0),0), 0;
+    sData->bc.row(4) << sData->V_o(sData->b(4),0), 0;
+    sData->bc.row(2) << sData->V_o(sData->b(2),0), 0.1;
+    sData->bc.row(3) << sData->V_o(sData->b(3),0), 0.05;
+    sData->bc.row(1) << sData->V_o(sData->b(1),0), -0.15;
+    sData->bc.row(5) << sData->V_o(sData->b(5),0), +0.15;
 }

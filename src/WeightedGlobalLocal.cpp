@@ -333,7 +333,7 @@ void WeightedGlobalLocal::add_soft_constraints(Eigen::SparseMatrix<double> &L) {
   for (int d = 0; d < dim; d++) {
     for (int i = 0; i < m_state.b.rows(); i++) {
       int v_idx = m_state.b(i);
-      rhs(d*v_n + v_idx) += m_state.soft_const_p * m_state.bc(i,0); // rhs
+      rhs(d*v_n + v_idx) += m_state.soft_const_p * m_state.bc(i,d); // rhs
       L.coeffRef(d*v_n + v_idx, d*v_n + v_idx) += m_state.soft_const_p; // diagonal of matrix
     }  
   }
