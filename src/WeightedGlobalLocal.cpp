@@ -402,7 +402,6 @@ double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd&
     
     }
   } else {
-    //schaeffer_e = log_e = conf_e = exp_conf = 0; exp_schaefer = 0;
     Eigen::Matrix<double,3,3> ji;
     for (int i = 0; i < f_n; i++) {
       ji(0,0) = Ji(i,0); ji(0,1) = Ji(i,1); ji(0,2) = Ji(i,2);
