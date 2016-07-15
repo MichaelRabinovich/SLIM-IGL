@@ -324,6 +324,7 @@ void WeightedGlobalLocal::build_linear_system(Eigen::SparseMatrix<double> &L) {
   L.makeCompressed();
 
   buildRhs(At);
+  Eigen::SparseMatrix<double> OldL = L;
   add_soft_constraints(L);
 }
 
@@ -342,7 +343,17 @@ double WeightedGlobalLocal::compute_energy(const Eigen::MatrixXd& V,
                                                        const Eigen::MatrixXi& F,  
                                                        Eigen::MatrixXd& V_o) {
   compute_jacobians(V_o);
-  return compute_energy_with_jacobians(V,F, Ji, V_o,m_state.M);
+  return compute_energy_with_jacobians(V,F, Ji, V_o,m_state.M) + compute_soft_const_energy(V,F,V_o);
+}
+
+double WeightedGlobalLocal::compute_soft_const_energy(const Eigen::MatrixXd& V,
+                                                       const Eigen::MatrixXi& F,  
+                                                       Eigen::MatrixXd& V_o) {
+  double e = 0;
+  for (int i = 0; i < m_state.b.rows(); i++) {
+    e += m_state.soft_const_p*(m_state.bc.row(i)-V_o.row(m_state.b(i))).squaredNorm();
+  }
+  return e;
 }
 
 double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd& V,

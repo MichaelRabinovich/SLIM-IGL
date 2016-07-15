@@ -34,6 +34,8 @@ private:
   void compute_jacobians(const Eigen::MatrixXd& V_o);
   double compute_energy_with_jacobians(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, 
     const Eigen::MatrixXd& Ji, Eigen::MatrixXd& V_o, Eigen::VectorXd& areas);
+  double compute_soft_const_energy(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
+                                             Eigen::MatrixXd& V_o);
   
   void update_weights_and_closest_rotations(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, Eigen::MatrixXd& uv);
   void solve_weighted_arap(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, Eigen::MatrixXd& uv, Eigen::VectorXi& b,

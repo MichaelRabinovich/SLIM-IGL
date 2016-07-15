@@ -42,26 +42,6 @@ enum DEMO_TYPE {
 DEMO_TYPE demo_type;
 
 bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int modifier){
-  /*
-  if (key == '1')
-    show_uv = false;
-  else if (key == '2')
-    show_uv = true;
-
-  if (key == 'q')
-    V_uv = initial_guess;
-
-  if (show_uv)
-  {
-    viewer.data.set_mesh(V_uv,F);
-    viewer.core.align_camera_center(V_uv,F);
-  }
-  else
-  {
-    viewer.data.set_mesh(V,F);
-    viewer.core.align_camera_center(V,F);
-  }
-  */
   if (key == '6') {
     switch (demo_type) {
       case PARAM_2D: {
@@ -109,6 +89,7 @@ void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
     viewer.data.set_mesh(V, F);
     viewer.data.set_uv(sData->V_o*uv_scale_param);
     viewer.data.compute_normals();
+    viewer.core.show_texture = true;
 
     first_iter = false;
   } else {
@@ -118,19 +99,87 @@ void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
 }
 
 void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
+  if (first_iter) {
 
+    igl::read_triangle_mesh("../circle.obj", V, F);
+
+    sData = new SLIMData(V,F);
+    check_mesh_for_issues(sData->V,sData->F, sData->M);
+    cout << "\tMesh is valid!" << endl;
+
+    sData->slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
+    sData->V_o.resize(sData->v_num, 2);
+    sData->V_o.col(0) = sData->V.col(0);
+    sData->V_o.col(1) = sData->V.col(1);
+
+    Eigen::VectorXi bnd;
+    igl::boundary_loop(sData->F,bnd);
+    const int B_STEPS = 22;
+    cout << "bnd.rows() = " << bnd.rows() << endl;
+    
+    sData->b.resize(bnd.rows()/B_STEPS - 1);
+    sData->bc.resize(sData->b.rows(),2);
+
+    int c_idx = 0;
+    cout << "consts num = " << sData->b.rows() << endl;
+    for (int i = B_STEPS; i < bnd.rows(); i+=B_STEPS) {
+        cout << "i = " << i << " bnd(i) = " << bnd(i) << " uv = " << sData->V_o.row(bnd(i)) << endl;
+        sData->b(c_idx) = bnd(i);
+        //sData->bc.row(c_idx) << sData->V_o(bnd(i),0), 0.1*c_idx*(sData->V_o(bnd(i),1));
+        c_idx++;
+    }
+    cout << "bc.rows() = " << sData->bc.rows() << endl; //exit(1);
+    
+    sData->bc.row(0) = sData->V_o.row(sData->b(0)); // keep it there for now
+    sData->bc.row(1) = sData->V_o.row(sData->b(2));
+    sData->bc.row(2) = sData->V_o.row(sData->b(3));
+    sData->bc.row(3) = sData->V_o.row(sData->b(4));
+    sData->bc.row(4) = sData->V_o.row(sData->b(5));
+    //sData->bc.row(6) = sData->V_o.row(sData->b(6));
+    //sData->bc.row(7) = sData->V_o.row(sData->b(7));
+
+    sData->bc.row(0) << sData->V_o(sData->b(0),0), 0;
+    sData->bc.row(4) << sData->V_o(sData->b(4),0), 0;
+    sData->bc.row(2) << sData->V_o(sData->b(2),0), 0.1;
+    sData->bc.row(3) << sData->V_o(sData->b(3),0), 0.05;
+    sData->bc.row(1) << sData->V_o(sData->b(1),0), -0.15;
+    sData->bc.row(5) << sData->V_o(sData->b(5),0), +0.15;
+    //sData->bc.row(2) << sData->V_o(sData->b(2),0), -0.1;
+    /*
+    cout << "sData->b = " << sData->b << endl;
+    cout << "sData->bc = " << sData->bc << endl;*/
+    viewer.data.set_mesh(V, F);
+    viewer.data.compute_normals();
+    viewer.core.show_lines = true;
+
+    sData->soft_const_p = 1e5;
+    slim = new Slim(*sData);
+    slim->precompute();
+
+    first_iter = false;
+
+  } else {
+    cout << "here" << endl;
+    Eigen::MatrixXd oldV = sData->V_o;
+    slim->solve(1); // 1 iter
+    viewer.data.set_mesh(sData->V_o, F);
+    cout << "change between V is " << (sData->V_o - oldV).norm() << endl;
+  }
 }
 
 int main(int argc, char *argv[]) {
 
    if (argc < 2) {
-      cerr << "Syntax: " << argv[0] << " demo_number(1 to 3)" << std::endl;
+      cerr << "Syntax: " << argv[0] << " demo_number (1 to 3)" << std::endl;
       return -1;
   }
 
   switch (std::atoi(argv[1])) {
     case 1: {
       demo_type = PARAM_2D;
+      break;
+    } case 2: {
+      demo_type = SOFT_CONST;
       break;
     }
     default: {
@@ -148,7 +197,7 @@ int main(int argc, char *argv[]) {
   viewer.core.show_lines = false;
 
   // Draw checkerboard texture
-  viewer.core.show_texture = true;
+  viewer.core.show_texture = false;
   viewer.launch();
 
   return 0;
