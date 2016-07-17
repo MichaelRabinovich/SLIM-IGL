@@ -273,7 +273,7 @@ void set_soft_constraint_for_circle() {
     igl::boundary_loop(sData->F,bnd);
     const int B_STEPS = 22; // constraint every B_STEPS vertices of the boundary
     
-    sData->b.resize(bnd.rows()/B_STEPS - 1);
+    sData->b.resize(bnd.rows()/B_STEPS);
     sData->bc.resize(sData->b.rows(),2);
 
     int c_idx = 0;
