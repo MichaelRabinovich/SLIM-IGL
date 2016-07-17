@@ -19,12 +19,12 @@ class WeightedGlobalLocal {
 public:
   WeightedGlobalLocal(SLIMData& state);
 
-  // Compute necessary information to before solving the proxy quadratic
+  // Compute necessary information before solving the proxy quadratic
   void pre_calc();
   
   // Solve the weighted proxy global step
   // Output:
-  //    V_new #V by dim list of mesh positions
+  //    V_new #V by dim list of mesh positions (will be fed to a linesearch algorithm)
   void solve_weighted_proxy(Eigen::MatrixXd& V_new);
 
   // Compute the energy specified in the SLIMData structure + the soft constraint energy (in case there are soft constraints)
