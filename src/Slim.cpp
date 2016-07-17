@@ -18,8 +18,7 @@ using namespace std;
 
 Slim::Slim(SLIMData& m_state) :
       m_state(m_state), wGlobalLocal(NULL) {
-  assert (m_state.F.cols() == 3);
-
+  assert (m_state.F.cols() == 3 || m_state.F.cols() == 4);
   wGlobalLocal = new WeightedGlobalLocal(m_state);
 }
 
