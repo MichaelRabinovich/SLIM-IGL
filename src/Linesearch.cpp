@@ -26,7 +26,7 @@ double Linesearch::line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& 
   if (cur_energy > 0) {
     old_energy = cur_energy;  
   } else {
-    old_energy = energy->compute_energy(V,F,uv); // no energy was given -> need to compute the current energy
+    old_energy = energy->compute_energy(uv); // no energy was given -> need to compute the current energy
   }
   double new_energy = old_energy;
   int cur_iter = 0; int MAX_STEP_SIZE_ITER = 12;
@@ -34,7 +34,7 @@ double Linesearch::line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& 
   while (new_energy >= old_energy && cur_iter < MAX_STEP_SIZE_ITER) {
     Eigen::MatrixXd new_uv = uv + step_size * d;
 
-    double cur_e = energy->compute_energy(V,F,new_uv);
+    double cur_e = energy->compute_energy(new_uv);
     if ( cur_e >= old_energy) {
       step_size /= 2;
     } else {

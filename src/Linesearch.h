@@ -13,7 +13,6 @@
 class Linesearch {
 
 public:
-  // does precomputation if it was not already done
   Linesearch(SLIMData& param_state);
 
   double compute( const Eigen::MatrixXd& V,

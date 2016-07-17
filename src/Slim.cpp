@@ -24,7 +24,7 @@ Slim::Slim(SLIMData& m_state) :
 
 void Slim::precompute() {
   wGlobalLocal->pre_calc();
-  m_state.energy = wGlobalLocal->compute_energy(m_state.V, m_state.F, m_state.V_o)/m_state.mesh_area;
+  m_state.energy = wGlobalLocal->compute_energy(m_state.V_o)/m_state.mesh_area;
 }
 
 void Slim::solve(int iter_num) {
@@ -37,7 +37,7 @@ void Slim::slim_iter() {
   Linesearch linesearch(m_state);
   Eigen::MatrixXd dest_res;
   dest_res = m_state.V_o;
-  wGlobalLocal->compute_map(m_state.V,m_state.F, m_state.b,m_state.bc, dest_res);
+  wGlobalLocal->solve_weighted_proxy(dest_res);
 
   double old_energy = m_state.energy;
 

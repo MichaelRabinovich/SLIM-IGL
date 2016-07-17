@@ -14,15 +14,14 @@
 
 using namespace Eigen;
 
-WeightedGlobalLocal::WeightedGlobalLocal(SLIMData& state, bool remeshing) :
+WeightedGlobalLocal::WeightedGlobalLocal(SLIMData& state) :
                                   m_state(state) {
 }
 
-void WeightedGlobalLocal::compute_map( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
-              Eigen::VectorXi& b, Eigen::MatrixXd& bc, Eigen::MatrixXd& uv) {
+void WeightedGlobalLocal::solve_weighted_proxy(Eigen::MatrixXd& V_new) {
 
-  update_weights_and_closest_rotations(V,F,uv);
-  solve_weighted_arap(V,F,uv,b,bc);
+  update_weights_and_closest_rotations(m_state.V,m_state.F,V_new);
+  solve_weighted_arap(m_state.V,m_state.F,V_new,m_state.b,m_state.bc);
 }
 
 void WeightedGlobalLocal::compute_jacobians(const Eigen::MatrixXd& uv) {
@@ -334,11 +333,9 @@ void WeightedGlobalLocal::add_soft_constraints(Eigen::SparseMatrix<double> &L) {
   }
 }
 
-double WeightedGlobalLocal::compute_energy(const Eigen::MatrixXd& V,
-                                                       const Eigen::MatrixXi& F,
-                                                       Eigen::MatrixXd& V_o) {
-  compute_jacobians(V_o);
-  return compute_energy_with_jacobians(V,F, Ji, V_o,m_state.M) + compute_soft_const_energy(V,F,V_o);
+double WeightedGlobalLocal::compute_energy(Eigen::MatrixXd& V_new) {
+  compute_jacobians(V_new);
+  return compute_energy_with_jacobians(m_state.V,m_state.F, Ji, V_new,m_state.M) + compute_soft_const_energy(m_state.V,m_state.F,V_new);
 }
 
 double WeightedGlobalLocal::compute_soft_const_energy(const Eigen::MatrixXd& V,

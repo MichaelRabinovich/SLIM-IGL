@@ -12,21 +12,24 @@
 
 #include "igl/arap.h"
 
+// This class compute the weights and solve the linear system of the quadratic proxy specified in the paper
 class WeightedGlobalLocal {
 
 public:
-  WeightedGlobalLocal(SLIMData& state, bool remeshing = false);
+  WeightedGlobalLocal(SLIMData& state);
 
+  // Compute necessary information to before solving the proxy quadratic
   void pre_calc();
   
-  void compute_map( const Eigen::MatrixXd& V,
-    const Eigen::MatrixXi& F,
-    Eigen::VectorXi& soft_b,
-    Eigen::MatrixXd& soft_bc,
-    Eigen::MatrixXd& V_o);
+  // Solve the weighted proxy global step
+  // Output:
+  //    V_new #V by dim list of mesh positions
+  void solve_weighted_proxy(Eigen::MatrixXd& V_new);
 
-  virtual double compute_energy(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
-                 Eigen::MatrixXd& V_o);
+  // Compute the energy specified in the SLIMData structure + the soft constraint energy (in case there are soft constraints)
+  // Input:
+  //    V_new #V by dim list of mesh positions
+  virtual double compute_energy(Eigen::MatrixXd& V_new);
 
 private:
 
