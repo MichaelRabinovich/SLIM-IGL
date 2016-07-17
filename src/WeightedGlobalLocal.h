@@ -12,7 +12,8 @@
 
 #include "igl/arap.h"
 
-// This class compute the weights and solve the linear system of the quadratic proxy specified in the paper
+// Computes the weights and solve the linear system for the quadratic proxy specified in the paper
+// The output of this is used to generate a search direction that will be fed to the Linesearch class
 class WeightedGlobalLocal {
 
 public:
