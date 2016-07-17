@@ -9,14 +9,14 @@ Linesearch::Linesearch (SLIMData& param_state) : m_state(param_state) {
 }
 
 double Linesearch::compute( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
-    Eigen::MatrixXd& uv, Eigen::MatrixXd& dst_uv, WeightedGlobalLocal* energy, double cur_energy) {
+    Eigen::MatrixXd& cur_v, Eigen::MatrixXd& dst_v, WeightedGlobalLocal* energy, double cur_energy) {
 
-    Eigen::MatrixXd d = dst_uv - uv;
+    Eigen::MatrixXd d = dst_v - cur_v;
 
-    double min_step_to_singularity = compute_max_step_from_singularities(uv,F,d);
+    double min_step_to_singularity = compute_max_step_from_singularities(cur_v,F,d);
     double max_step_size = min(1., min_step_to_singularity*0.8);
 
-    return line_search(V,F,uv,d,max_step_size, energy, cur_energy);
+    return line_search(V,F,cur_v,d,max_step_size, energy, cur_energy);
 }
 
 double Linesearch::line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
