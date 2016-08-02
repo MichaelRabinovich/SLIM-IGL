@@ -1,8 +1,6 @@
 #include <iostream>
 
-#include "SLIMData.h"
 #include "Slim.h"
-#include "geometric_utils.h"
 
 #include "igl/components.h"
 #include "igl/readOBJ.h"
@@ -15,6 +13,8 @@
 #include <igl/serialize.h>
 #include <igl/read_triangle_mesh.h>
 #include <igl/viewer/Viewer.h>
+#include <igl/flipped_triangles_ids.h>
+#include <igl/euler_characteristic.h>
 
 #include <stdlib.h>
 
@@ -50,7 +50,7 @@ enum DEMO_TYPE {
 DEMO_TYPE demo_type;
 
 bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int modifier){
-  if (key == '6') {
+  if (key == ' ') {
     switch (demo_type) {
       case PARAM_2D: {
         param_2d_demo_iter(viewer);
@@ -82,13 +82,13 @@ void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
     cout << "\tMesh is valid!" << endl;
 
     sData->slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
-    
+
     Eigen::VectorXi bnd; Eigen::MatrixXd bnd_uv;
     igl::boundary_loop(F,bnd);
     igl::map_vertices_to_circle(V,bnd,bnd_uv);
 
     igl::harmonic(V,F,bnd,bnd_uv,1,sData->V_o);
-    if (count_flips(sData->V,sData->F,sData->V_o) > 0) {
+    if (flipped_triangles_ids(sData->V_o,sData->F).size() != 0) {
       igl::harmonic(F,bnd,bnd_uv,1,sData->V_o); // use uniform laplacian
     }
 
@@ -100,7 +100,7 @@ void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
     viewer.data.set_mesh(V, F);
     viewer.core.align_camera_center(V,F);
     viewer.data.set_uv(sData->V_o*uv_scale_param);
-    viewer.data.compute_normals();    
+    viewer.data.compute_normals();
     viewer.core.show_texture = true;
 
     first_iter = false;
@@ -203,8 +203,13 @@ void display_3d_mesh(igl::viewer::Viewer& viewer) {
 
 int main(int argc, char *argv[]) {
 
+  cerr << "Press space for running an iteration." << std::endl;
+
    if (argc < 2) {
       cerr << "Syntax: " << argv[0] << " demo_number (1 to 3)" << std::endl;
+      cerr << "1. 2D unconstrained parametrization" << std::endl;
+      cerr << "2. 2D parametrization with positional constraints" << std::endl;
+      cerr << "3. 3D mesh deformation with positional constraints" << std::endl;
       return -1;
   }
 
@@ -234,6 +239,10 @@ int main(int argc, char *argv[]) {
 
   // Draw checkerboard texture
   viewer.core.show_texture = false;
+
+  // First iteration
+  key_down(viewer, ' ', 0);
+
   viewer.launch();
 
   return 0;
@@ -246,12 +255,12 @@ void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::Vector
 
   Eigen::MatrixXi C, Ci;
   igl::components(A, C, Ci);
-  
+
   int connected_components = Ci.rows();
   if (connected_components!=1) {
     cout << "Error! Input has multiple connected components" << endl; exit(1);
   }
-  int euler_char = get_euler_char(V, F);
+  int euler_char = igl::euler_characteristic(V, F);
   if (!euler_char) {
     cout << "Error! Input does not have a disk topology, it's euler char is " << euler_char << endl; exit(1);
   }
@@ -272,7 +281,7 @@ void set_soft_constraint_for_circle() {
     Eigen::VectorXi bnd;
     igl::boundary_loop(sData->F,bnd);
     const int B_STEPS = 22; // constraint every B_STEPS vertices of the boundary
-    
+
     sData->b.resize(bnd.rows()/B_STEPS);
     sData->bc.resize(sData->b.rows(),2);
 
@@ -281,7 +290,7 @@ void set_soft_constraint_for_circle() {
         sData->b(c_idx) = bnd(i);
         c_idx++;
     }
-    
+
     sData->bc.row(0) = sData->V_o.row(sData->b(0)); // keep it there for now
     sData->bc.row(1) = sData->V_o.row(sData->b(2));
     sData->bc.row(2) = sData->V_o.row(sData->b(3));
@@ -303,7 +312,7 @@ void set_cube_corner_constraints() {
   min_y = sData->V.col(1).minCoeff(); max_y = sData->V.col(1).maxCoeff();
   min_z = sData->V.col(2).minCoeff(); max_z = sData->V.col(2).maxCoeff();
 
-  
+
   // get all cube corners
   sData->b.resize(8,1); sData->bc.resize(8,3);
   int x;
@@ -317,7 +326,7 @@ void set_cube_corner_constraints() {
     if (sData->V.row(i) == Eigen::RowVector3d(max_x,min_y,max_z)) sData->b(6) = i;
     if (sData->V.row(i) == Eigen::RowVector3d(max_x,max_y,max_z)) sData->b(7) = i;
   }
-  
+
   // get all cube edges
   std::set<int> cube_edge1; Eigen::VectorXi cube_edge1_vec;
   for (int i = 0; i < sData->V.rows(); i++) {
@@ -336,7 +345,7 @@ void set_cube_corner_constraints() {
   }
   int_set_to_eigen_vector(cube_edge2, edge2);
   sData->b = igl::cat(1,edge1,edge2);
-  
+
   std::set<int> cube_edge3; Eigen::VectorXi edge3;
   for (int i = 0; i < sData->V.rows(); i++) {
     if ((sData->V(i,0) == max_x && sData->V(i,1) == min_y)) {

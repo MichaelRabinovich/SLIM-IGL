@@ -30,10 +30,6 @@ add_definitions(${LIBIGL_DEFINITIONS})
 
 set(SOURCES
   ${PROJECT_SOURCE_DIR}/src/main.cpp
-  ${PROJECT_SOURCE_DIR}/src/geometric_utils.cpp
-  ${PROJECT_SOURCE_DIR}/src/SLIMData.cpp
-  ${PROJECT_SOURCE_DIR}/src/WeightedGlobalLocal.cpp
-  ${PROJECT_SOURCE_DIR}/src/Linesearch.cpp
   ${PROJECT_SOURCE_DIR}/src/Slim.cpp
   ${ADDITIONAL_SOURCES}
 )
