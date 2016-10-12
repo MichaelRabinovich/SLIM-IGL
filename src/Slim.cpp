@@ -3,6 +3,7 @@
 #include <igl/boundary_loop.h>
 #include <igl/cotmatrix.h>
 #include <igl/edge_lengths.h>
+#include <igl/grad.h>
 #include <igl/local_basis.h>
 #include <igl/readOBJ.h>
 #include <igl/repdiag.h>
@@ -37,50 +38,12 @@ using namespace Eigen;
 void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
                                      const Eigen::MatrixXd& F1, const Eigen::MatrixXd& F2,
                                      Eigen::SparseMatrix<double>& D1, Eigen::SparseMatrix<double>& D2) {
-  using namespace Eigen;
+
   Eigen::SparseMatrix<double> G;
-
-  // Get grad
-  const int fn = F.rows();  const int vn = V.rows();
-  Eigen::MatrixXd grad3_3f(3, 3*fn);
-  Eigen::MatrixXd fN; igl::per_face_normals(V,F,fN);
-  Eigen::VectorXd Ar; igl::doublearea(V,F, Ar);
-  for (int i = 0; i < fn; i++) {
-     // renaming indices of vertices of triangles for convenience
-    int i1 = F(i,0);
-    int i2 = F(i,1);
-    int i3 = F(i,2);
-
-    // #F x 3 matrices of triangle edge vectors, named after opposite vertices
-    Eigen::Matrix<double, 3,3> e;
-    e.col(0) = V.row(i2) - V.row(i1);
-    e.col(1) = V.row(i3) - V.row(i2);
-    e.col(2) = V.row(i1) - V.row(i3);;
-
-    Eigen::Matrix<double, 3,1> Fni = fN.row(i);
-    double Ari = Ar(i);
-
-    //grad3_3f(:,[3*i,3*i-2,3*i-1])=[0,-Fni(3), Fni(2);Fni(3),0,-Fni(1);-Fni(2),Fni(1),0]*e/(2*Ari);
-    Eigen::Matrix<double, 3,3> n_M;
-    n_M << 0,-Fni(2),Fni(1),Fni(2),0,-Fni(0),-Fni(1),Fni(0),0;
-    Eigen::VectorXi R = igl::colon<int>(0,2);
-    Eigen::VectorXi C(3); C  << 3*i+2,3*i,3*i+1;
-    Eigen::MatrixXd res = (1./Ari)*(n_M*e);
-    igl::slice_into(res,R,C,grad3_3f);
-  }
-  std::vector<Triplet<double> > Gx_trip,Gy_trip,Gz_trip;
-  int val_idx = 0;
-  for (int i = 0; i < fn; i++) {
-    for (int j = 0; j < 3; j++) {
-      Gx_trip.push_back(Triplet<double>(i, F(i,j), grad3_3f(0, val_idx)));
-      Gy_trip.push_back(Triplet<double>(i, F(i,j), grad3_3f(1, val_idx)));
-      Gz_trip.push_back(Triplet<double>(i, F(i,j), grad3_3f(2, val_idx)));
-      val_idx++;
-    }
-  }
-  SparseMatrix<double> Dx(fn,vn);  Dx.setFromTriplets(Gx_trip.begin(), Gx_trip.end());
-  SparseMatrix<double> Dy(fn,vn);  Dy.setFromTriplets(Gy_trip.begin(), Gy_trip.end());
-  SparseMatrix<double> Dz(fn,vn);  Dz.setFromTriplets(Gz_trip.begin(), Gz_trip.end());
+  igl::grad(V,F,G);
+  Eigen::SparseMatrix<double> Dx = G.block(0,0,F.rows(),V.rows());
+  Eigen::SparseMatrix<double> Dy = G.block(F.rows(),0,F.rows(),V.rows());
+  Eigen::SparseMatrix<double> Dz = G.block(2*F.rows(),0,F.rows(),V.rows());
 
   D1 = F1.col(0).asDiagonal()*Dx + F1.col(1).asDiagonal()*Dy + F1.col(2).asDiagonal()*Dz;
   D2 = F2.col(0).asDiagonal()*Dx + F2.col(1).asDiagonal()*Dy + F2.col(2).asDiagonal()*Dz;
@@ -89,7 +52,6 @@ void compute_surface_gradient_matrix(const Eigen::MatrixXd& V, const Eigen::Matr
 void compute_tet_grad_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& T,
                             Eigen::SparseMatrix<double>& Dx, Eigen::SparseMatrix<double>& Dy, Eigen::SparseMatrix<double>& Dz, bool uniform) {
   using namespace Eigen;
-  cout << "compute_tet_grad_matrix" << endl;
   assert(T.cols() == 4);
   const int n = V.rows(); int m = T.rows();
 
@@ -110,17 +72,16 @@ void compute_tet_grad_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& T,
   VectorXd vol; igl::volume(V,T,vol);
 
   VectorXd A(F.rows());
-  //N = normalizerow(normals(V,F)); switch normals and volumnes to switch gradients (keep volumes the same or switch to a constant volume)
   MatrixXd N(F.rows(),3);
   if (!uniform) {
     // compute tetrahedron face normals
-    igl::per_face_normals(V,F,N); int norm_rows = N.rows();// Should we protect against degeneracy?
+    igl::per_face_normals(V,F,N); int norm_rows = N.rows();
     for (int i = 0; i < norm_rows; i++)
       N.row(i) /= N.row(i).norm();
     igl::doublearea(V,F,A); A/=2.;
   } else {
-    // Use uniform tetrahedra:
-    //      V = h*[0,0,0;1,0,0;0.5,sqrt(3)/2.,0;0.5,sqrt(3)/6.,sqrt(2)/sqrt(3)] (Base is same as for uniform 2d grad but with the appropriate 4th vertex)
+    // Use a uniform tetrahedra as a reference:
+    //      V = h*[0,0,0;1,0,0;0.5,sqrt(3)/2.,0;0.5,sqrt(3)/6.,sqrt(2)/sqrt(3)]
     //
     // With normals
     //         0         0    1.0000
@@ -173,8 +134,6 @@ void compute_tet_grad_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& T,
       case 3:
         T_j = 0;
         break;
-      default:
-        assert(1<0); // should not get here
     }
     int i_idx = i%m;
     int j_idx = T(i_idx,T_j);
@@ -190,9 +149,6 @@ void compute_tet_grad_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& T,
   Dz.setFromTriplets(Dz_t.begin(), Dz_t.end());
 
 }
-
-
-
 
 // Computes the weights and solve the linear system for the quadratic proxy specified in the paper
 // The output of this is used to generate a search direction that will be fed to the Linesearch class
@@ -513,7 +469,7 @@ void WeightedGlobalLocal::pre_calc() {
       Eigen::MatrixXd F1,F2,F3;
       igl::local_basis(m_state.V,m_state.F,F1,F2,F3);
       compute_surface_gradient_matrix(m_state.V,m_state.F,F1,F2,Dx,Dy);
-
+      
       W_11.resize(f_n); W_12.resize(f_n); W_21.resize(f_n); W_22.resize(f_n);
     } else {
       dim = 3;
