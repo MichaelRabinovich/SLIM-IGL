@@ -250,56 +250,6 @@ private:
   int dim;
 };
 
-
-class Linesearch {
-
-public:
-  Linesearch(Slim& param_state);
-
-  // A simple backtracking linesearch
-  // Input:
-  //    V #V by 3 list of mesh positions (original mesh)
-  //    F #F by simplex-size list of triangle|tet indices into V
-  //    cur_v #V by dim list of the current mesh positions
-  //    dst_v #V by dim list the destination mesh positions (d = cur_v - dst_v)
-  //    energy A class used to evaluate the current objective value
-  //    cur_energy (OPTIONAL) The current objective funcational at cur_v
-  //
-  // Output:
-  //    cur_v A new set of vertices such that energy(cur_v) < previous energy
-  //    Returns the new objective value
-  double compute( const Eigen::MatrixXd& V,
-    const Eigen::MatrixXi& F,
-    Eigen::MatrixXd& cur_v,
-    Eigen::MatrixXd& dst_v,
-    WeightedGlobalLocal* energy,
-    double cur_energy = -1);
-
-private:
-
-  double compute_max_step_from_singularities(const Eigen::MatrixXd& uv,
-                                            const Eigen::MatrixXi& F,
-                                            Eigen::MatrixXd& d);
-
-  double line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
-                              Eigen::MatrixXd& uv, const Eigen::MatrixXd& d,
-                              double step_size, WeightedGlobalLocal* energy, double cur_energy);
-
-  double get_min_pos_root_2D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
-            Eigen::MatrixXd& direc, int f);
-
-  double get_min_pos_root_3D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
-            Eigen::MatrixXd& direc, int f);
-
-  double get_smallest_pos_quad_zero(double a,double b, double c);
-  int SolveP3(std::vector<double>& x,double a,double b,double c);
-
-  Slim& m_state;
-};
-
-
-
-
 //// Implementation
 
 WeightedGlobalLocal::WeightedGlobalLocal(Slim& state) :
@@ -881,13 +831,35 @@ void WeightedGlobalLocal::buildRhs(const Eigen::SparseMatrix<double>& At) {
   rhs = (At*M.asDiagonal()*f_rhs + m_state.proximal_p * uv_flat);
 }
 
+
+
 /////// Implementation of Linesearch
 
-Linesearch::Linesearch (Slim& param_state) : m_state(param_state) {
-  // empty
-}
+double flip_avoiding_linesearch( const Eigen::MatrixXd& V,
+    const Eigen::MatrixXi& F,
+    Eigen::MatrixXd& cur_v,
+    Eigen::MatrixXd& dst_v,
+    WeightedGlobalLocal* energy,
+    double cur_energy = -1);
 
-double Linesearch::compute( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
+double compute_max_step_from_singularities(const Eigen::MatrixXd& uv,
+                                            const Eigen::MatrixXi& F,
+                                            Eigen::MatrixXd& d);
+
+double line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
+                              Eigen::MatrixXd& uv, const Eigen::MatrixXd& d,
+                              double step_size, WeightedGlobalLocal* energy, double cur_energy);
+
+double get_min_pos_root_2D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
+            Eigen::MatrixXd& direc, int f);
+
+double get_min_pos_root_3D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
+            Eigen::MatrixXd& direc, int f);
+
+double get_smallest_pos_quad_zero(double a,double b, double c);
+int SolveP3(std::vector<double>& x,double a,double b,double c);
+
+double flip_avoiding_linesearch( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
     Eigen::MatrixXd& cur_v, Eigen::MatrixXd& dst_v, WeightedGlobalLocal* energy, double cur_energy) {
 
     Eigen::MatrixXd d = dst_v - cur_v;
@@ -898,7 +870,7 @@ double Linesearch::compute( const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
     return line_search(V,F,cur_v,d,max_step_size, energy, cur_energy);
 }
 
-double Linesearch::line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
+double line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F,
                               Eigen::MatrixXd& uv, const Eigen::MatrixXd& d,
                               double step_size, WeightedGlobalLocal* energy, double cur_energy) {
   double old_energy;
@@ -925,7 +897,7 @@ double Linesearch::line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& 
   return new_energy;
 }
 
- double Linesearch::compute_max_step_from_singularities(const Eigen::MatrixXd& uv,
+ double compute_max_step_from_singularities(const Eigen::MatrixXd& uv,
                                             const Eigen::MatrixXi& F,
                                             Eigen::MatrixXd& d) {
     double max_step = INFINITY;
@@ -945,7 +917,7 @@ double Linesearch::line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& 
     return max_step;
  }
 
- double Linesearch::get_min_pos_root_2D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
+ double get_min_pos_root_2D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
             Eigen::MatrixXd& d, int f) {
 /*
       Finding the smallest timestep t s.t a triangle get degenerated (<=> det = 0)
@@ -1008,7 +980,7 @@ double Linesearch::line_search(const Eigen::MatrixXd& V, const Eigen::MatrixXi& 
   return get_smallest_pos_quad_zero(a,b,c);
 }
 
-double Linesearch::get_smallest_pos_quad_zero(double a,double b, double c) {
+double get_smallest_pos_quad_zero(double a,double b, double c) {
   double t1,t2;
   if (a != 0) {
     double delta_in = pow(b,2) - 4*a*c;
@@ -1041,7 +1013,7 @@ double Linesearch::get_smallest_pos_quad_zero(double a,double b, double c) {
   }
 }
 
-double Linesearch::get_min_pos_root_3D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
+double get_min_pos_root_3D(const Eigen::MatrixXd& uv,const Eigen::MatrixXi& F,
             Eigen::MatrixXd& direc, int f) {
   /*
       Searching for the roots of:
@@ -1135,7 +1107,7 @@ const double eps=1e-14;
 //         2 real roots: x[0], x[1],          return 2
 //         1 real root : x[0], x[1] ± i*x[2], return 1
 // http://math.ivanovo.ac.ru/dalgebra/Khashin/poly/index.html
-int Linesearch::SolveP3(std::vector<double>& x,double a,double b,double c) { // solve cubic equation x^3 + a*x^2 + b*x + c
+int SolveP3(std::vector<double>& x,double a,double b,double c) { // solve cubic equation x^3 + a*x^2 + b*x + c
   double a2 = a*a;
     double q  = (a2 - 3*b)/9;
   double r  = (a*(2*a2-9*b) + 27*c)/54;
@@ -1195,13 +1167,12 @@ void Slim::solve(int iter_num) {
 }
 
 void Slim::slim_iter() {
-  Linesearch linesearch(*this);
   Eigen::MatrixXd dest_res;
   dest_res = V_o;
   wGlobalLocal->solve_weighted_proxy(dest_res);
 
   double old_energy = energy;
 
-  energy = linesearch.compute(V,F,V_o, dest_res, wGlobalLocal,
+  energy = flip_avoiding_linesearch(V,F,V_o, dest_res, wGlobalLocal,
                                          energy*mesh_area)/mesh_area;
 }
