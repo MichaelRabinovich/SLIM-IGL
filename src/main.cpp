@@ -24,19 +24,19 @@
 using namespace std;
 using namespace Eigen;
 
-void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXd& areas);
+void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F);
 void param_2d_demo_iter(igl::viewer::Viewer& viewer);
-void set_soft_constraint_for_circle();
+void get_soft_constraint_for_circle(Eigen::MatrixXd& V_o, Eigen::MatrixXi& F, Eigen::VectorXi& b, Eigen::MatrixXd& bc);
 void soft_const_demo_iter(igl::viewer::Viewer& viewer);
 void deform_3d_demo_iter(igl::viewer::Viewer& viewer);
-void set_cube_corner_constraints();
+void get_cube_corner_constraints(Eigen::MatrixXd& V_o, Eigen::MatrixXi& F, Eigen::VectorXi& b, Eigen::MatrixXd& bc);
 void display_3d_mesh(igl::viewer::Viewer& viewer);
 void int_set_to_eigen_vector(const std::set<int>& int_set, Eigen::VectorXi& vec);
 
 Eigen::MatrixXd V;
 Eigen::MatrixXi F;
 bool first_iter = true;
-Slim* slim = NULL;
+SLIMData sData;
 igl::Timer timer;
 
 double uv_scale_param;
@@ -75,36 +75,36 @@ void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
   if (first_iter) {
     timer.start();
     igl::read_triangle_mesh("../models/face.obj", V, F);
-
-    slim = new Slim(V,F);
-    check_mesh_for_issues(V,F, slim->M);
+    check_mesh_for_issues(V,F);
     cout << "\tMesh is valid!" << endl;
-
-    slim->slim_energy = Slim::SYMMETRIC_DIRICHLET;
-
+    
+    Eigen::MatrixXd uv_init;
     Eigen::VectorXi bnd; Eigen::MatrixXd bnd_uv;
     igl::boundary_loop(F,bnd);
     igl::map_vertices_to_circle(V,bnd,bnd_uv);
 
-    igl::harmonic(V,F,bnd,bnd_uv,1,slim->V_o);
-    if (igl::flipped_triangles(slim->V_o,slim->F).size() != 0) {
-      igl::harmonic(F,bnd,bnd_uv,1,slim->V_o); // use uniform laplacian
+    igl::harmonic(V,F,bnd,bnd_uv,1,uv_init);
+    if (igl::flipped_triangles(uv_init,F).size() != 0) {
+      igl::harmonic(F,bnd,bnd_uv,1,uv_init); // use uniform laplacian
     }
 
     cout << "initialized parametrization" << endl;
-    slim->precompute();
 
-    uv_scale_param = 15 * (1./sqrt(slim->mesh_area));
+    sData.slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
+    Eigen::VectorXi b; Eigen::MatrixXd bc;
+    slim_precompute(V,F,b,bc,0,uv_init,sData);
+
+    uv_scale_param = 15 * (1./sqrt(sData.mesh_area));
     viewer.data.set_mesh(V, F);
     viewer.core.align_camera_center(V,F);
-    viewer.data.set_uv(slim->V_o*uv_scale_param);
+    viewer.data.set_uv(sData.V_o*uv_scale_param);
     viewer.data.compute_normals();
     viewer.core.show_texture = true;
 
     first_iter = false;
   } else {
-    slim->solve(1); // 1 iter
-    viewer.data.set_uv(slim->V_o*uv_scale_param);
+    slim_solve(sData,1); // 1 iter
+    viewer.data.set_uv(sData.V_o*uv_scale_param);
     cout << "time = " << timer.getElapsedTime() << endl;
   }
 }
@@ -113,18 +113,17 @@ void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
   if (first_iter) {
 
     igl::read_triangle_mesh("../models/circle.obj", V, F);
-    slim = new Slim(V,F);
 
-    check_mesh_for_issues(slim->V,slim->F, slim->M);
+    check_mesh_for_issues(V,F);
     cout << "\tMesh is valid!" << endl;
-    slim->V_o = V.block(0,0,V.rows(),2);
+    Eigen::MatrixXd V_0 = V.block(0,0,V.rows(),2);
 
-    set_soft_constraint_for_circle();
+    Eigen::VectorXi b; Eigen::MatrixXd bc;
+    get_soft_constraint_for_circle(V_0,F,b,bc);
+    double soft_const_p = 1e5;
+    slim_precompute(V,F,b,bc,soft_const_p,V_0,sData);
 
-    slim->slim_energy = Slim::SYMMETRIC_DIRICHLET;
-    slim->soft_const_p = 1e5;
-    
-    slim->precompute();
+    sData.slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
 
     viewer.data.set_mesh(V, F);
     viewer.core.align_camera_center(V,F);
@@ -134,8 +133,8 @@ void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
     first_iter = false;
 
   } else {
-    slim->solve(1); // 1 iter
-    viewer.data.set_mesh(slim->V_o, F);
+    slim_solve(sData,1); // 1 iter
+    viewer.data.set_mesh(sData.V_o, F);
   }
 }
 
@@ -143,20 +142,22 @@ void deform_3d_demo_iter(igl::viewer::Viewer& viewer) {
   if (first_iter) {
     igl::readOBJ("../models/cube_40k.obj", V, F);
 
-    slim = new Slim(V,F);
-    slim->V_o = V;
+    Eigen::MatrixXd V_0 = V;
+    Eigen::VectorXi b; Eigen::MatrixXd bc;
+    get_cube_corner_constraints(V_0,F,b,bc);
 
-    set_cube_corner_constraints();
-    display_3d_mesh(viewer);
+    double soft_const_p = 1e5;
+    slim_precompute(V,F,b,bc,soft_const_p,V_0,sData); // V_0 = V here
+    cout << "precomputed" << endl;
+
+    sData.slim_energy = SLIMData::EXP_CONFORMAL;
+    sData.exp_factor = 5.0;
+
     first_iter = false;
+    display_3d_mesh(viewer);
 
-    slim->slim_energy = Slim::EXP_CONFORMAL;
-    slim->soft_const_p = 1e5;
-    slim->exp_factor = 5.0;
-    slim = new Slim(*slim);
-    slim->precompute();
   } else {
-    slim->solve(1); // 1 iter
+    slim_solve(sData,1); // 1 iter
     display_3d_mesh(viewer);
   }
 }
@@ -165,7 +166,7 @@ void display_3d_mesh(igl::viewer::Viewer& viewer) {
   MatrixXd V_temp; MatrixXi F_temp;
   Eigen::MatrixXd Barycenters;
 
-  igl::barycenter(slim->V,slim->F,Barycenters);
+  igl::barycenter(sData.V,sData.F,Barycenters);
   //cout << "Barycenters.rows() = " << Barycenters.rows() << endl;
   //double t = double((key - '1')+1) / 9.0;
   double view_depth = 10.;
@@ -184,10 +185,10 @@ void display_3d_mesh(igl::viewer::Viewer& viewer) {
   F_temp.resize(s.size()*4,3);
 
   for (unsigned i=0; i<s.size();++i){
-    V_temp.row(i*4+0) = slim->V_o.row(slim->F(s[i],0));
-    V_temp.row(i*4+1) = slim->V_o.row(slim->F(s[i],1));
-    V_temp.row(i*4+2) = slim->V_o.row(slim->F(s[i],2));
-    V_temp.row(i*4+3) = slim->V_o.row(slim->F(s[i],3));
+    V_temp.row(i*4+0) = sData.V_o.row(sData.F(s[i],0));
+    V_temp.row(i*4+1) = sData.V_o.row(sData.F(s[i],1));
+    V_temp.row(i*4+2) = sData.V_o.row(sData.F(s[i],2));
+    V_temp.row(i*4+3) = sData.V_o.row(sData.F(s[i],3));
     F_temp.row(i*4+0) << (i*4)+0, (i*4)+1, (i*4)+3;
     F_temp.row(i*4+1) << (i*4)+0, (i*4)+2, (i*4)+1;
     F_temp.row(i*4+2) << (i*4)+3, (i*4)+2, (i*4)+0;
@@ -206,7 +207,7 @@ int main(int argc, char *argv[]) {
    if (argc < 2) {
       cerr << "Syntax: " << argv[0] << " demo_number (1 to 3)" << std::endl;
       cerr << "1. 2D unconstrained parametrization" << std::endl;
-      cerr << "2. 2D parametrization with positional constraints" << std::endl;
+      cerr << "2. 2D deformation with positional constraints" << std::endl;
       cerr << "3. 3D mesh deformation with positional constraints" << std::endl;
       return -1;
   }
@@ -246,7 +247,7 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXd& areas) {
+void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F) {
 
   Eigen::SparseMatrix<double> A;
   igl::adjacency_matrix(F,A);
@@ -266,6 +267,8 @@ void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::Vector
   if (!is_edge_manifold) {
     cout << "Error! Input is not an edge manifold" << endl; exit(1);
   }
+
+  Eigen::VectorXd areas; igl::doublearea(V,F,areas);
   const double eps = 1e-14;
   for (int i = 0; i < areas.rows(); i++) {
     if (areas(i) < eps) {
@@ -274,61 +277,61 @@ void check_mesh_for_issues(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::Vector
   }
 }
 
-void set_soft_constraint_for_circle() {
+void get_soft_constraint_for_circle(Eigen::MatrixXd& V_o, Eigen::MatrixXi& F, Eigen::VectorXi& b, Eigen::MatrixXd& bc) {
 
     Eigen::VectorXi bnd;
-    igl::boundary_loop(slim->F,bnd);
+    igl::boundary_loop(F,bnd);
     const int B_STEPS = 22; // constraint every B_STEPS vertices of the boundary
 
-    slim->b.resize(bnd.rows()/B_STEPS);
-    slim->bc.resize(slim->b.rows(),2);
+    b.resize(bnd.rows()/B_STEPS);
+    bc.resize(b.rows(),2);
 
     int c_idx = 0;
     for (int i = B_STEPS; i < bnd.rows(); i+=B_STEPS) {
-        slim->b(c_idx) = bnd(i);
+        b(c_idx) = bnd(i);
         c_idx++;
     }
 
-    slim->bc.row(0) = slim->V_o.row(slim->b(0)); // keep it there for now
-    slim->bc.row(1) = slim->V_o.row(slim->b(2));
-    slim->bc.row(2) = slim->V_o.row(slim->b(3));
-    slim->bc.row(3) = slim->V_o.row(slim->b(4));
-    slim->bc.row(4) = slim->V_o.row(slim->b(5));
+    bc.row(0) = V_o.row(b(0)); // keep it there for now
+    bc.row(1) = V_o.row(b(2));
+    bc.row(2) = V_o.row(b(3));
+    bc.row(3) = V_o.row(b(4));
+    bc.row(4) = V_o.row(b(5));
 
 
-    slim->bc.row(0) << slim->V_o(slim->b(0),0), 0;
-    slim->bc.row(4) << slim->V_o(slim->b(4),0), 0;
-    slim->bc.row(2) << slim->V_o(slim->b(2),0), 0.1;
-    slim->bc.row(3) << slim->V_o(slim->b(3),0), 0.05;
-    slim->bc.row(1) << slim->V_o(slim->b(1),0), -0.15;
-    slim->bc.row(5) << slim->V_o(slim->b(5),0), +0.15;
+    bc.row(0) << V_o(b(0),0), 0;
+    bc.row(4) << V_o(b(4),0), 0;
+    bc.row(2) << V_o(b(2),0), 0.1;
+    bc.row(3) << V_o(b(3),0), 0.05;
+    bc.row(1) << V_o(b(1),0), -0.15;
+    bc.row(5) << V_o(b(5),0), +0.15;
 }
 
-void set_cube_corner_constraints() {
+void get_cube_corner_constraints(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXi& b, Eigen::MatrixXd& bc) {
   double min_x,max_x,min_y,max_y,min_z,max_z;
-  min_x = slim->V.col(0).minCoeff(); max_x = slim->V.col(0).maxCoeff();
-  min_y = slim->V.col(1).minCoeff(); max_y = slim->V.col(1).maxCoeff();
-  min_z = slim->V.col(2).minCoeff(); max_z = slim->V.col(2).maxCoeff();
+  min_x = V.col(0).minCoeff(); max_x = V.col(0).maxCoeff();
+  min_y = V.col(1).minCoeff(); max_y = V.col(1).maxCoeff();
+  min_z = V.col(2).minCoeff(); max_z = V.col(2).maxCoeff();
 
 
   // get all cube corners
-  slim->b.resize(8,1); slim->bc.resize(8,3);
+  b.resize(8,1); bc.resize(8,3);
   int x;
-  for (int i = 0; i < slim->V.rows(); i++) {
-    if (slim->V.row(i) == Eigen::RowVector3d(min_x,min_y,min_z)) slim->b(0) = i;
-    if (slim->V.row(i) == Eigen::RowVector3d(min_x,min_y,max_z)) slim->b(1) = i;
-    if (slim->V.row(i) == Eigen::RowVector3d(min_x,max_y,min_z)) slim->b(2) = i;
-    if (slim->V.row(i) == Eigen::RowVector3d(min_x,max_y,max_z)) slim->b(3) = i;
-    if (slim->V.row(i) == Eigen::RowVector3d(max_x,min_y,min_z)) slim->b(4) = i;
-    if (slim->V.row(i) == Eigen::RowVector3d(max_x,max_y,min_z)) slim->b(5) = i;
-    if (slim->V.row(i) == Eigen::RowVector3d(max_x,min_y,max_z)) slim->b(6) = i;
-    if (slim->V.row(i) == Eigen::RowVector3d(max_x,max_y,max_z)) slim->b(7) = i;
+  for (int i = 0; i < V.rows(); i++) {
+    if (V.row(i) == Eigen::RowVector3d(min_x,min_y,min_z)) b(0) = i;
+    if (V.row(i) == Eigen::RowVector3d(min_x,min_y,max_z)) b(1) = i;
+    if (V.row(i) == Eigen::RowVector3d(min_x,max_y,min_z)) b(2) = i;
+    if (V.row(i) == Eigen::RowVector3d(min_x,max_y,max_z)) b(3) = i;
+    if (V.row(i) == Eigen::RowVector3d(max_x,min_y,min_z)) b(4) = i;
+    if (V.row(i) == Eigen::RowVector3d(max_x,max_y,min_z)) b(5) = i;
+    if (V.row(i) == Eigen::RowVector3d(max_x,min_y,max_z)) b(6) = i;
+    if (V.row(i) == Eigen::RowVector3d(max_x,max_y,max_z)) b(7) = i;
   }
 
   // get all cube edges
   std::set<int> cube_edge1; Eigen::VectorXi cube_edge1_vec;
-  for (int i = 0; i < slim->V.rows(); i++) {
-    if ((slim->V(i,0) == min_x && slim->V(i,1) == min_y)) {
+  for (int i = 0; i < V.rows(); i++) {
+    if ((V(i,0) == min_x && V(i,1) == min_y)) {
       cube_edge1.insert(i);
     }
   }
@@ -336,48 +339,48 @@ void set_cube_corner_constraints() {
   int_set_to_eigen_vector(cube_edge1, edge1);
 
   std::set<int> cube_edge2; Eigen::VectorXi edge2;
-  for (int i = 0; i < slim->V.rows(); i++) {
-    if ((slim->V(i,0) == max_x && slim->V(i,1) == max_y)) {
+  for (int i = 0; i < V.rows(); i++) {
+    if ((V(i,0) == max_x && V(i,1) == max_y)) {
       cube_edge2.insert(i);
     }
   }
   int_set_to_eigen_vector(cube_edge2, edge2);
-  slim->b = igl::cat(1,edge1,edge2);
+  b = igl::cat(1,edge1,edge2);
 
   std::set<int> cube_edge3; Eigen::VectorXi edge3;
-  for (int i = 0; i < slim->V.rows(); i++) {
-    if ((slim->V(i,0) == max_x && slim->V(i,1) == min_y)) {
+  for (int i = 0; i < V.rows(); i++) {
+    if ((V(i,0) == max_x && V(i,1) == min_y)) {
       cube_edge3.insert(i);
     }
   }
   int_set_to_eigen_vector(cube_edge3, edge3);
-  slim->b = igl::cat(1,slim->b,edge3);
+  b = igl::cat(1,b,edge3);
 
   std::set<int> cube_edge4; Eigen::VectorXi edge4;
-  for (int i = 0; i < slim->V.rows(); i++) {
-    if ((slim->V(i,0) == min_x && slim->V(i,1) == max_y)) {
+  for (int i = 0; i < V.rows(); i++) {
+    if ((V(i,0) == min_x && V(i,1) == max_y)) {
       cube_edge4.insert(i);
     }
   }
   int_set_to_eigen_vector(cube_edge4, edge4);
-  slim->b = igl::cat(1,slim->b,edge4);
+  b = igl::cat(1,b,edge4);
 
-  slim->bc.resize(slim->b.rows(),3);
+  bc.resize(b.rows(),3);
   Eigen::Matrix3d m; m = Eigen::AngleAxisd(0.3 * M_PI, Eigen::Vector3d(1./sqrt(2.),1./sqrt(2.),0.)/*Eigen::Vector3d::UnitX()*/);
   int i = 0;
   for (; i < cube_edge1.size(); i++) {
     Eigen::RowVector3d edge_rot_center(min_x,min_y,(min_z+max_z)/2.);
-    slim->bc.row(i) = (slim->V.row(slim->b(i)) - edge_rot_center) * m + edge_rot_center;
+    bc.row(i) = (V.row(b(i)) - edge_rot_center) * m + edge_rot_center;
   }
   for (; i < cube_edge1.size() + cube_edge2.size(); i++) {
     Eigen::RowVector3d edge_rot_center(max_x,max_y,(min_z+max_z)/2.);
-    slim->bc.row(i) = (slim->V.row(slim->b(i)) - edge_rot_center) * m.transpose() + edge_rot_center;
+    bc.row(i) = (V.row(b(i)) - edge_rot_center) * m.transpose() + edge_rot_center;
   }
   for (; i < cube_edge1.size() + cube_edge2.size() + cube_edge3.size(); i++) {
-    slim->bc.row(i) = 0.75*slim->V.row(slim->b(i));
+    bc.row(i) = 0.75*V.row(b(i));
   }
-  for (; i < slim->b.rows(); i++) {
-    slim->bc.row(i) = 0.75*slim->V.row(slim->b(i));
+  for (; i < b.rows(); i++) {
+    bc.row(i) = 0.75*V.row(b(i));
   }
 }
 

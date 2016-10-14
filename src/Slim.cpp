@@ -155,7 +155,7 @@ void compute_tet_grad_matrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& T,
 class WeightedGlobalLocal {
 
 public:
-  WeightedGlobalLocal(Slim& state);
+  WeightedGlobalLocal(SLIMData& state);
 
   // Compute necessary information before solving the proxy quadratic
   void pre_calc();
@@ -189,7 +189,7 @@ private:
   void add_soft_constraints(Eigen::SparseMatrix<double> &L);
   void add_proximal_penalty();
 
-  Slim& m_state;
+  SLIMData& m_state;
   Eigen::VectorXd M;
   Eigen::VectorXd rhs;
   Eigen::MatrixXd Ri,Ji;
@@ -208,7 +208,7 @@ private:
 
 //// Implementation
 
-WeightedGlobalLocal::WeightedGlobalLocal(Slim& state) :
+WeightedGlobalLocal::WeightedGlobalLocal(SLIMData& state) :
                                   m_state(state) {
 }
 
@@ -255,20 +255,20 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
 
     // Update Weights according to energy
     switch(m_state.slim_energy) {
-    case Slim::ARAP: {
+    case SLIMData::ARAP: {
       m_sing_new << 1,1;
       break;
-    } case Slim::SYMMETRIC_DIRICHLET: {
+    } case SLIMData::SYMMETRIC_DIRICHLET: {
         double s1_g = 2* (s1-pow(s1,-3));
         double s2_g = 2 * (s2-pow(s2,-3));
         m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));
         break;
-    } case Slim::LOG_ARAP: {
+    } case SLIMData::LOG_ARAP: {
         double s1_g = 2 * (log(s1)/s1);
         double s2_g = 2 * (log(s2)/s2);
         m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));
         break;
-    } case Slim::CONFORMAL: {
+    } case SLIMData::CONFORMAL: {
         double s1_g = 1/(2*s2) - s2/(2*pow(s1,2));
         double s2_g = 1/(2*s1) - s1/(2*pow(s2,2));
 
@@ -281,7 +281,7 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
         closest_sing_vec << s1_min,s2_min;
         ri = ui*closest_sing_vec.asDiagonal()*vi.transpose();
         break;
-    } case Slim::EXP_CONFORMAL: {
+    } case SLIMData::EXP_CONFORMAL: {
         double s1_g = 2* (s1-pow(s1,-3));
         double s2_g = 2 * (s2-pow(s2,-3));
 
@@ -296,7 +296,7 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
 
         m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1)));
         break;
-    } case Slim::EXP_SYMMETRIC_DIRICHLET: {
+    } case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
         double s1_g = 2* (s1-pow(s1,-3));
         double s2_g = 2 * (s2-pow(s2,-3));
 
@@ -336,22 +336,22 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
 
       // 1) Update Weights
       switch(m_state.slim_energy) {
-        case Slim::ARAP: {
+        case SLIMData::ARAP: {
           m_sing_new << 1,1,1;
           break;
-        } case Slim::LOG_ARAP: {
+        } case SLIMData::LOG_ARAP: {
             double s1_g = 2 * (log(s1)/s1);
             double s2_g = 2 * (log(s2)/s2);
             double s3_g = 2 * (log(s3)/s3);
             m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1))), sqrt(s3_g/(2*(s3-1)));
             break;
-          } case Slim::SYMMETRIC_DIRICHLET: {
+          } case SLIMData::SYMMETRIC_DIRICHLET: {
             double s1_g = 2* (s1-pow(s1,-3));
             double s2_g = 2 * (s2-pow(s2,-3));
             double s3_g = 2 * (s3-pow(s3,-3));
             m_sing_new << sqrt(s1_g/(2*(s1-1))), sqrt(s2_g/(2*(s2-1))), sqrt(s3_g/(2*(s3-1)));
             break;
-          } case Slim::EXP_SYMMETRIC_DIRICHLET: {
+          } case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
            double s1_g = 2* (s1-pow(s1,-3));
           double s2_g = 2 * (s2-pow(s2,-3));
           double s3_g = 2 * (s3-pow(s3,-3));
@@ -368,7 +368,7 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
 
           break;
         }
-        case Slim::CONFORMAL: {
+        case SLIMData::CONFORMAL: {
           double common_div = 9*(pow(s1*s2*s3,5./3.));
 
           double s1_g = (-2*s2*s3*(pow(s2,2)+pow(s3,2)-2*pow(s1,2)) ) / common_div;
@@ -385,7 +385,7 @@ void WeightedGlobalLocal::update_weights_and_closest_rotations(const Eigen::Matr
           ri = ui*closest_sing_vec.asDiagonal()*vi.transpose();
           break;
         }
-        case Slim::EXP_CONFORMAL: {
+        case SLIMData::EXP_CONFORMAL: {
           // E_conf = (s1^2 + s2^2 + s3^2)/(3*(s1*s2*s3)^(2/3) )
           // dE_conf/ds1 = (-2*(s2*s3)*(s2^2+s3^2 -2*s1^2) ) / (9*(s1*s2*s3)^(5/3))
           // Argmin E_conf(s1): s1 = sqrt(s1^2+s2^2)/sqrt(2)
@@ -559,27 +559,27 @@ double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd&
       double s1 = sing(0); double s2 = sing(1);
 
       switch(m_state.slim_energy) {
-        case Slim::ARAP: {
+        case SLIMData::ARAP: {
           energy+= areas(i) * (pow(s1-1,2) + pow(s2-1,2));
           break;
         }
-        case Slim::SYMMETRIC_DIRICHLET: {
+        case SLIMData::SYMMETRIC_DIRICHLET: {
           energy += areas(i) * (pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2));
           break;
         }
-        case Slim::EXP_SYMMETRIC_DIRICHLET: {
+        case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
           energy += areas(i) * exp(m_state.exp_factor*(pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2)));
           break;
         }
-        case Slim::LOG_ARAP: {
+        case SLIMData::LOG_ARAP: {
           energy += areas(i) * (pow(log(s1),2) + pow(log(s2),2));
           break;
         }
-        case Slim::CONFORMAL: {
+        case SLIMData::CONFORMAL: {
           energy += areas(i) * ( (pow(s1,2)+pow(s2,2))/(2*s1*s2) );
           break;
         }
-        case Slim::EXP_CONFORMAL: {
+        case SLIMData::EXP_CONFORMAL: {
           energy += areas(i) * exp(m_state.exp_factor*((pow(s1,2)+pow(s2,2))/(2*s1*s2)));
           break;
         }
@@ -601,27 +601,27 @@ double WeightedGlobalLocal::compute_energy_with_jacobians(const Eigen::MatrixXd&
       double s1 = sing(0); double s2 = sing(1); double s3 = sing(2);
 
       switch(m_state.slim_energy) {
-        case Slim::ARAP: {
+        case SLIMData::ARAP: {
           energy+= areas(i) * (pow(s1-1,2) + pow(s2-1,2) + pow(s3-1,2));
           break;
         }
-        case Slim::SYMMETRIC_DIRICHLET: {
+        case SLIMData::SYMMETRIC_DIRICHLET: {
           energy += areas(i) * (pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2) + pow(s3,2) + pow(s3,-2));
           break;
         }
-        case Slim::EXP_SYMMETRIC_DIRICHLET: {
+        case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
           energy += areas(i) * exp(m_state.exp_factor*(pow(s1,2) +pow(s1,-2) + pow(s2,2) + pow(s2,-2) + pow(s3,2) + pow(s3,-2)));
           break;
         }
-        case Slim::LOG_ARAP: {
+        case SLIMData::LOG_ARAP: {
           energy += areas(i) * (pow(log(s1),2) + pow(log(abs(s2)),2) + pow(log(abs(s3)),2));
           break;
         }
-        case Slim::CONFORMAL: {
+        case SLIMData::CONFORMAL: {
           energy += areas(i) * ( ( pow(s1,2)+pow(s2,2)+pow(s3,2) ) /(3*pow(s1*s2*s3,2./3.)) );
           break;
         }
-        case Slim::EXP_CONFORMAL: {
+        case SLIMData::EXP_CONFORMAL: {
           energy += areas(i) * exp( ( pow(s1,2)+pow(s2,2)+pow(s3,2) ) /(3*pow(s1*s2*s3,2./3.)) );
           break;
         }
@@ -1097,38 +1097,44 @@ int SolveP3(std::vector<double>& x,double a,double b,double c) { // solve cubic 
 
 /// Slim Implementation
 
-Slim::Slim(Eigen::MatrixXd& V_in, Eigen::MatrixXi& F_in) : V(V_in), F(F_in), wGlobalLocal(NULL) {
-  proximal_p = 0.0001;
 
-  v_num = V.rows();
-  f_num = F.rows();
-  igl::doublearea(V,F,M); M /= 2.;
-  mesh_area = M.sum();
-  mesh_improvement_3d = false; // whether to use a jacobian derived from a real mesh or an abstract regular mesh (used for mesh improvement)
-  exp_factor = 1.0; // param used only for exponential energies (e.g exponential symmetric dirichlet)
+void slim_precompute(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXi b, Eigen::MatrixXd& bc, double soft_const_p,
+    Eigen::MatrixXd& V_init, SLIMData& data) {
+  data.V = V;
+  data.F = F;
+  data.V_o = V_init;
+
+  data.v_num = V.rows();
+  data.f_num = F.rows();
+
+  data.b = b;
+  data.bc = bc;
+  data.soft_const_p = soft_const_p;
+
+  data.proximal_p = 0.0001;
+
+  igl::doublearea(V,F,data.M); data.M /= 2.;
+  data.mesh_area = data.M.sum();
+  data.mesh_improvement_3d = false; // whether to use a jacobian derived from a real mesh or an abstract regular mesh (used for mesh improvement)
+  data.exp_factor = 1.0; // param used only for exponential energies (e.g exponential symmetric dirichlet)
 
   assert (F.cols() == 3 || F.cols() == 4);
-  wGlobalLocal = new WeightedGlobalLocal(*this);
+  data.wGlobalLocal = new WeightedGlobalLocal(data);
+
+  data.wGlobalLocal->pre_calc();
+  data.energy = data.wGlobalLocal->compute_energy(data.V_o)/data.mesh_area;
 }
 
-void Slim::precompute() {
-  wGlobalLocal->pre_calc();
-  energy = wGlobalLocal->compute_energy(V_o)/mesh_area;
-}
+void slim_solve(SLIMData& data, int iter_num) {
 
-void Slim::solve(int iter_num) {
   for (int i = 0; i < iter_num; i++) {
-    slim_iter();
+    Eigen::MatrixXd dest_res;
+    dest_res = data.V_o;
+    data.wGlobalLocal->solve_weighted_proxy(dest_res);
+
+    double old_energy = data.energy;
+
+    data.energy = flip_avoiding_linesearch(data.V,data.F,data.V_o, dest_res, data.wGlobalLocal,
+                                           data.energy*data.mesh_area)/data.mesh_area;
   }
-}
-
-void Slim::slim_iter() {
-  Eigen::MatrixXd dest_res;
-  dest_res = V_o;
-  wGlobalLocal->solve_weighted_proxy(dest_res);
-
-  double old_energy = energy;
-
-  energy = flip_avoiding_linesearch(V,F,V_o, dest_res, wGlobalLocal,
-                                         energy*mesh_area)/mesh_area;
 }
