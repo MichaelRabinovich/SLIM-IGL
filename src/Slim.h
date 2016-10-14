@@ -52,18 +52,17 @@ struct SLIMData {
 
   WeightedGlobalLocal* wGlobalLocal;
 };
-  // Initialize a SLIM deformation
-  // Inputs:
-  //	SLIMData structure, which should include:
-  //		V  #V by 3 list of mesh vertex positions
-  //		F  #F by 3/3 list of mesh faces (triangles/tets)
-  //		SLIM_ENERGY Energy to optimize
-  //		For other parameters see @SLIMData
-//SLIMData();
 
-// Compute necessary information to start using a SLIM deformation
-void slim_precompute(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXi b, Eigen::MatrixXd& bc, double soft_const_p,
-    Eigen::MatrixXd& V_init, SLIMData& slimData);
+  // Compute necessary information to start using SLIM
+  // Inputs:
+  //		V           #V by 3 list of mesh vertex positions
+  //		F           #F by 3/3 list of mesh faces (triangles/tets)
+  //    b           list of boundary indices into V
+  //    bc          #b by dim list of boundary conditions
+  //    soft_p      Soft penalty factor (can be zero)
+  //    slim_energy Energy to minimize
+void slim_precompute(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::MatrixXd& V_init, SLIMData& data,
+   SLIMData::SLIM_ENERGY slim_energy, Eigen::VectorXi& b, Eigen::MatrixXd& bc, double soft_p);
 
 // Run iter_num iterations of SLIM
 // Outputs:

@@ -1097,9 +1097,9 @@ int SolveP3(std::vector<double>& x,double a,double b,double c) { // solve cubic 
 
 /// Slim Implementation
 
+void slim_precompute(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::MatrixXd& V_init, SLIMData& data,
+   SLIMData::SLIM_ENERGY slim_energy, Eigen::VectorXi& b, Eigen::MatrixXd& bc, double soft_p) {
 
-void slim_precompute(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXi b, Eigen::MatrixXd& bc, double soft_const_p,
-    Eigen::MatrixXd& V_init, SLIMData& data) {
   data.V = V;
   data.F = F;
   data.V_o = V_init;
@@ -1107,9 +1107,11 @@ void slim_precompute(Eigen::MatrixXd& V, Eigen::MatrixXi& F, Eigen::VectorXi b, 
   data.v_num = V.rows();
   data.f_num = F.rows();
 
+  data.slim_energy = slim_energy;
+
   data.b = b;
   data.bc = bc;
-  data.soft_const_p = soft_const_p;
+  data.soft_const_p = soft_p;
 
   data.proximal_p = 0.0001;
 

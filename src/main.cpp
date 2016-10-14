@@ -92,7 +92,7 @@ void param_2d_demo_iter(igl::viewer::Viewer& viewer) {
 
     sData.slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
     Eigen::VectorXi b; Eigen::MatrixXd bc;
-    slim_precompute(V,F,b,bc,0,uv_init,sData);
+    slim_precompute(V,F,uv_init,sData, SLIMData::SYMMETRIC_DIRICHLET, b,bc,0);
 
     uv_scale_param = 15 * (1./sqrt(sData.mesh_area));
     viewer.data.set_mesh(V, F);
@@ -121,9 +121,7 @@ void soft_const_demo_iter(igl::viewer::Viewer& viewer) {
     Eigen::VectorXi b; Eigen::MatrixXd bc;
     get_soft_constraint_for_circle(V_0,F,b,bc);
     double soft_const_p = 1e5;
-    slim_precompute(V,F,b,bc,soft_const_p,V_0,sData);
-
-    sData.slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
+    slim_precompute(V,F,V_0,sData,SLIMData::SYMMETRIC_DIRICHLET,b,bc,soft_const_p);
 
     viewer.data.set_mesh(V, F);
     viewer.core.align_camera_center(V,F);
@@ -147,11 +145,9 @@ void deform_3d_demo_iter(igl::viewer::Viewer& viewer) {
     get_cube_corner_constraints(V_0,F,b,bc);
 
     double soft_const_p = 1e5;
-    slim_precompute(V,F,b,bc,soft_const_p,V_0,sData); // V_0 = V here
-    cout << "precomputed" << endl;
-
-    sData.slim_energy = SLIMData::EXP_CONFORMAL;
     sData.exp_factor = 5.0;
+    slim_precompute(V,F,V_0,sData,SLIMData::EXP_CONFORMAL,b,bc,soft_const_p);
+    cout << "precomputed" << endl;
 
     first_iter = false;
     display_3d_mesh(viewer);
