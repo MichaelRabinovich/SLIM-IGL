@@ -29,8 +29,10 @@ include_directories(${LIBIGL_INCLUDE_DIRS})
 add_definitions(${LIBIGL_DEFINITIONS})
 
 set(SOURCES
+  ${PROJECT_SOURCE_DIR}/src/line_search.cpp
+  ${PROJECT_SOURCE_DIR}/src/flip_avoiding_line_search.cpp
   ${PROJECT_SOURCE_DIR}/src/main.cpp
-  ${PROJECT_SOURCE_DIR}/src/Slim.cpp
+  ${PROJECT_SOURCE_DIR}/src/slim.cpp
   ${ADDITIONAL_SOURCES}
 )
 
