@@ -45,7 +45,6 @@ struct SLIMData {
   // INTERNAL
   Eigen::VectorXd M;
   double mesh_area;
-  double avg_edge_length;
   int v_num;
   int f_num;
   double proximal_p;
